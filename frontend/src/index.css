@@ -1,68 +1,171 @@
-:root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+@import url('https://fonts.googleapis.com/css2?family=Cookie&display=swap');
+@import "tailwindcss";
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+@theme {
+  /* Color palette */
+  --color-primary: #EBE3D5;
+  --color-primary-light: #F3EEEA;
+  --color-btn-dark: #776B5D;
+  --color-btn: #F3EEEA;
+  --color-text: #3B3030;
+  --color-text-light: #F3EEEA;
+  --color-background: #F3EEEA;
+  --color-divider: #000000;
+  --color-error: #BF0000;
+  --color-success: #0ABF00;
 
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
-
-body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
-}
-
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+  /* Typography */
+  --font-primary: "Times New Roman", Times, serif;
+  --font-logo: "Cookie", serif;
+  
+  /* Spacing */
+  --spacing-xs: 0.25rem;
+  --spacing-s: 0.5rem;
+  --spacing-m: 1rem;
+  --spacing-l: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-2xl: 3rem;
+  --spacing-3xl: 4rem;
+  
+  /* Border radius */
+  --radius-s: 0.25rem;
+  --radius-m: 0.5rem;
+  --radius-l: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-full: 9999px;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
+@layer base {
+  body {
+    font-family: var(--font-primary);
+    color: var(--color-text);
+    background-color: var(--color-background);
+    line-height: 1.5;
+    font-weight: 400;
   }
-  a:hover {
-    color: #747bff;
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-primary);
+    font-weight: 500;
+    line-height: 1.2;
   }
-  button {
-    background-color: #f9f9f9;
+}
+
+@layer components {
+  .logo {
+    font-family: var(--font-logo);
+  }
+  
+  .btn-primary {
+    font-family: var(--font-primary);
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-full);
+    font-weight: 800;
+    transition: all 0.2s;
+    text-align: center;
+    background-color: var(--color-btn-dark);
+    color: var(--color-text-light);
+  }
+  
+  .btn-primary:hover {
+    background-color: #9B8D7E;
+    color: var(--color-text);
+  }
+  
+  .btn-secondary {
+    font-family: var(--font-primary);
+    padding: 0.75rem 1rem;
+    border-color: var(--color-btn-dark);
+    border-width: 0.1rem;
+    border-radius: var(--radius-full);
+    font-weight: 500;
+    transition: all 0.2s;
+    text-align: center;
+    background-color: var(--color-btn);
+    color: var(--color-text);
+  }
+  
+  .btn-secondary:hover {
+    background-color: var(--color-btn-dark);
+    color: var(--color-text-light);
+  }
+  
+  .form-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-full);
+    border: 1px solid #d1d5db;
+    background-color: #f9fafb;
+    transition: all 0.2s;
+  }
+  
+  .form-input:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--color-primary);
+    border-color: transparent;
+  }
+  
+  .card {
+    background-color: white;
+    border-radius: var(--radius-m);
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    border: 1px solid #f3f4f6;
+    overflow: hidden;
+    transition: box-shadow 0.2s;
+  }
+  
+  .card:hover {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+}
+
+@layer base {
+  body {
+    @apply font-primary text-text bg-background;
+    line-height: 1.5;
+    font-weight: 400;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-primary font-medium;
+    line-height: 1.2;
+  }
+}
+
+@layer components {
+  .logo {
+    @apply font-logo;
+  }
+  
+  .btn-primary {
+    @apply font-primary py-3 px-4 rounded-full font-bold transition-all duration-200 text-center bg-btn-dark text-text-light;
+  }
+  
+  .btn-primary:hover {
+    @apply bg-primary text-text;
+  }
+  
+  .btn-secondary {
+    @apply font-primary py-3 px-4 rounded-full font-medium transition-all duration-200 text-center bg-btn text-text;
+  }
+  
+  .btn-secondary:hover {
+    @apply bg-btn-dark text-text-light;
+  }
+  
+  .form-input {
+    @apply w-full py-3 px-4 rounded-full border border-gray-300 bg-gray-50 transition-all duration-200;
+  }
+  
+  .form-input:focus {
+    @apply outline-none ring-2 ring-primary border-transparent;
+  }
+  
+  .card {
+    @apply bg-white rounded-m shadow-sm border border-gray-100 overflow-hidden transition-shadow duration-200;
+  }
+  
+  .card:hover {
+    @apply shadow-md;
   }
 }
