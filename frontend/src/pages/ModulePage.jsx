@@ -3,15 +3,128 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import Layout from '../components/common/Layout';
-import Button from '../components/common/Button';
-// Import mock service
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { 
-  fetchMockModuleTasks, 
-  fetchMockModuleResources,
-  updateMockTaskProgress,
-  updateMockModuleProgress,
-  updateMockLearningStreak
-} from '../services/MockRoadmapService';
+  CheckCircle, 
+  Clock, 
+  BookOpen, 
+  FileText, 
+  Video, 
+  Code, 
+  Settings, 
+  HelpCircle,
+  ExternalLink,
+  ArrowLeft,
+  PlayCircle,
+  AlertTriangle
+} from 'lucide-react';
+
+// Helper functions (keep existing ones)
+const generateDefaultDescription = (moduleName) => {
+  if (!moduleName) return "Learn the fundamentals of this topic";
+  
+  const descriptions = {
+    'ui/ux': `Understand the principles of user interface design|Learn user experience research methods|Practice creating wireframes and prototypes|Study color theory and typography`,
+    'html': `Master HTML5 semantic elements|Learn proper document structure|Understand accessibility best practices|Practice building responsive layouts`,
+    'css': `Master CSS selectors and properties|Learn responsive design techniques|Understand CSS Grid and Flexbox|Practice modern CSS features`,
+    'javascript': `Understand JavaScript fundamentals|Learn DOM manipulation|Master asynchronous programming|Practice with ES6+ features`,
+    'react': `Learn React component architecture|Understand state management|Master React hooks and lifecycle|Build interactive applications`,
+    'node': `Understand server-side JavaScript|Learn to build REST APIs|Master npm and package management|Practice database integration`,
+    'database': `Learn database design principles|Understand SQL fundamentals|Practice data modeling|Master database optimization`,
+    'devops': `Learn CI/CD pipelines|Understand containerization with Docker|Master cloud deployment|Practice infrastructure automation`,
+    'vue': `Learn Vue.js component system|Understand reactive data binding|Master Vue CLI and ecosystem|Build single-page applications`,
+    'design': `Study design principles and theory|Learn about visual hierarchy|Practice with design tools|Understand user-centered design`
+  };
+  
+  const name = moduleName.toLowerCase();
+  for (const [key, desc] of Object.entries(descriptions)) {
+    if (name.includes(key)) return desc;
+  }
+  
+  return `Learn ${moduleName} fundamentals|Understand core concepts|Practice with hands-on exercises|Apply knowledge to real projects`;
+};
+
+const processResources = (resources) => {
+  if (!Array.isArray(resources)) return [];
+  
+  return resources.map((resource, index) => {
+    if (typeof resource === 'object' && resource !== null) {
+      return {
+        id: resource.id || index,
+        title: resource.title || resource.resource_title || `Resource ${index + 1}`,
+        url: resource.url || '#',
+        resource_type: resource.resource_type || resource.type || 'article',
+        estimated_time_minutes: resource.estimated_time_minutes || 30
+      };
+    }
+    
+    if (typeof resource === 'string') {
+      return {
+        id: index,
+        title: resource,
+        url: generateResourceUrl(resource),
+        resource_type: detectResourceType(resource),
+        estimated_time_minutes: estimateTimeFromTitle(resource)
+      };
+    }
+    
+    return {
+      id: index,
+      title: `Resource ${index + 1}`,
+      url: '#',
+      resource_type: 'article',
+      estimated_time_minutes: 30
+    };
+  });
+};
+
+const generateResourceUrl = (resourceTitle) => {
+  const title = resourceTitle.toLowerCase();
+  
+  if (title.includes('youtube')) {
+    const searchTerm = resourceTitle.replace(/youtube\s+tutorials?\s+on\s+/i, '').trim();
+    return `https://www.youtube.com/results?search_query=${encodeURIComponent(searchTerm)}`;
+  }
+  
+  if (title.includes('online course')) {
+    const searchTerm = resourceTitle.replace(/online\s+course:\s*/i, '').trim();
+    return `https://www.coursera.org/search?query=${encodeURIComponent(searchTerm)}`;
+  }
+  
+  if (title.includes('documentation')) {
+    const searchTerm = resourceTitle.replace(/documentation:\s*/i, '').trim();
+    return `https://developer.mozilla.org/en-US/search?q=${encodeURIComponent(searchTerm)}`;
+  }
+  
+  if (title.includes('tutorial')) {
+    return `https://www.freecodecamp.org/learn`;
+  }
+  
+  return `https://www.google.com/search?q=${encodeURIComponent(resourceTitle)}`;
+};
+
+const detectResourceType = (resourceTitle) => {
+  const title = resourceTitle.toLowerCase();
+  
+  if (title.includes('youtube') || title.includes('video')) return 'video';
+  if (title.includes('course') || title.includes('tutorial')) return 'tutorial';
+  if (title.includes('documentation') || title.includes('docs')) return 'documentation';
+  if (title.includes('article') || title.includes('blog')) return 'article';
+  
+  return 'article';
+};
+
+const estimateTimeFromTitle = (title) => {
+  const lowerTitle = title.toLowerCase();
+  if (lowerTitle.includes('course')) return 120;
+  if (lowerTitle.includes('video') || lowerTitle.includes('youtube')) return 45;
+  if (lowerTitle.includes('tutorial')) return 60;
+  if (lowerTitle.includes('documentation')) return 30;
+  return 30;
+};
 
 const ModulePage = () => {
   const { moduleId } = useParams();
@@ -19,458 +132,569 @@ const ModulePage = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [module, setModule] = useState(null);
-  const [tasks, setTasks] = useState([]);
   const [resources, setResources] = useState([]);
   const [activeTab, setActiveTab] = useState('overview');
   const [progress, setProgress] = useState(0);
-  
-  // Mock data for the module
-  const mockModule = {
-    id: parseInt(moduleId),
-    name: "Introduction to Node.js",
-    description: "Understand what Node.js is|Learn its use cases and features|Install Node.js and setup development environment",
-    sequence_order: 1,
-    isCompleted: false,
-    estimated_completion_hours: 3
-  };
-  
-  // Mock data for tasks
-  const mockTasks = [
-    {
-      id: 1,
-      title: "Install Node.js",
-      description: "Download and install Node.js on your computer",
-      estimated_time_minutes: 15,
-      is_completed: false,
-      task_type: "setup"
-    },
-    {
-      id: 2,
-      title: "Create your first Node.js script",
-      description: "Write a simple 'Hello World' program using Node.js",
-      estimated_time_minutes: 20,
-      is_completed: false,
-      task_type: "coding"
-    },
-    {
-      id: 3,
-      title: "Understanding Node.js modules",
-      description: "Learn how to create and import modules in Node.js",
-      estimated_time_minutes: 45,
-      is_completed: false,
-      task_type: "learning"
-    },
-    {
-      id: 4,
-      title: "Quiz: Node.js Basics",
-      description: "Test your understanding of Node.js fundamentals",
-      estimated_time_minutes: 30,
-      is_completed: false,
-      task_type: "quiz"
-    }
-  ];
-  
-  // Mock data for learning resources
-  const mockResources = [
-    {
-      id: 1,
-      title: "Introduction to Node.js",
-      url: "https://www.youtube.com/watch?v=fBNz5xF-Kx4",
-      resource_type: "video",
-      estimated_time_minutes: 60
-    },
-    {
-      id: 2,
-      title: "Node.js Documentation: Getting Started",
-      url: "https://nodejs.org/en/docs/guides/getting-started-guide/",
-      resource_type: "documentation",
-      estimated_time_minutes: 30
-    },
-    {
-      id: 3,
-      title: "Understanding Node.js Event Loop",
-      url: "https://blog.logrocket.com/nodejs-event-loop-complete-guide/",
-      resource_type: "article",
-      estimated_time_minutes: 25
-    }
-  ];
-  
+  const [error, setError] = useState(null);
+
   useEffect(() => {
-    // Fetch module data from our mock service
     const fetchModuleData = async () => {
-      setLoading(true);
+      if (!user || !moduleId) return;
+
       try {
-        // For a real app, you'd fetch this data from your backend
-        // For now, use mock data
-        
-        // Find the module from the mock data - since we don't have a dedicated endpoint for a single module
-        // For now, use static data
-        setModule({
-          id: parseInt(moduleId),
-          name: moduleId === "6" ? "RESTful API Development" : "Introduction to Node.js",
-          description: moduleId === "6" 
-            ? "Design RESTful endpoints|Implement authentication|Handle request validation"
-            : "Understand what Node.js is|Learn its use cases and features|Install Node.js and setup development environment",
-          sequence_order: moduleId === "6" ? 6 : 1,
-          isCompleted: moduleId !== "6",
-          estimated_completion_hours: moduleId === "6" ? 5 : 3
+        setLoading(true);
+        setError(null);
+
+        console.log("🔍 Looking for module:", moduleId);
+
+        // Fetch the user's learning path to get module data
+        const { data: pathData, error: pathError } = await supabase
+          .from('user_learning_paths')
+          .select('path_data')
+          .eq('user_id', user.id)
+          .eq('status', 'active')
+          .single();
+
+        if (pathError) {
+          console.error('Error fetching learning path:', pathError);
+          throw new Error('Failed to load learning path');
+        }
+
+        if (!pathData?.path_data) {
+          throw new Error('No learning path found');
+        }
+
+        const roadmap = pathData.path_data;
+        console.log("📋 Roadmap structure:", {
+          hasPhases: !!roadmap.phases,
+          hasModules: !!roadmap.modules,
+          phasesCount: roadmap.phases?.length,
+          modulesCount: roadmap.modules?.length
         });
+
+        // Enhanced module search - try multiple approaches
+        let foundModule = null;
+        let allModules = [];
+
+        // Collect all modules from roadmap
+        if (roadmap.phases && Array.isArray(roadmap.phases)) {
+          roadmap.phases.forEach(phase => {
+            if (phase.modules && Array.isArray(phase.modules)) {
+              allModules.push(...phase.modules);
+            }
+          });
+        } else if (roadmap.modules && Array.isArray(roadmap.modules)) {
+          allModules = roadmap.modules;
+        }
+
+        console.log("📦 All modules found:", allModules.map(m => ({
+          id: m.module_id || m.id,
+          name: m.module_name || m.name,
+          sequence: m.sequence_order
+        })));
+
+        // Try different search strategies
+        const searchStrategies = [
+          // Strategy 1: Exact module_id match
+          () => allModules.find(m => (m.module_id || m.id)?.toString() === moduleId),
+          
+          // Strategy 2: Sequence order match (for when module IDs change after modification)
+          () => allModules.find(m => m.sequence_order?.toString() === moduleId),
+          
+          // Strategy 3: Array index match (fallback)
+          () => allModules[parseInt(moduleId) - 1],
+          
+          // Strategy 4: Find first module with matching name pattern
+          () => allModules.find(m => {
+            const name = (m.module_name || m.name || '').toLowerCase();
+            return name.includes('module ' + moduleId) || name.includes('#' + moduleId);
+          }),
+          
+          // Strategy 5: Just get the module at the position (zero-indexed)
+          () => allModules[parseInt(moduleId)]
+        ];
+
+        for (let i = 0; i < searchStrategies.length; i++) {
+          foundModule = searchStrategies[i]();
+          if (foundModule) {
+            console.log(`✅ Found module using strategy ${i + 1}:`, {
+              id: foundModule.module_id || foundModule.id,
+              name: foundModule.module_name || foundModule.name
+            });
+            break;
+          }
+        }
+
+        if (!foundModule) {
+          console.error("❌ Module not found with any strategy");
+          console.log("Available modules:", allModules.map(m => ({
+            module_id: m.module_id,
+            id: m.id,
+            sequence_order: m.sequence_order,
+            name: m.module_name || m.name
+          })));
+          
+          // Show a helpful error with available modules
+          setError({
+            type: 'module_not_found',
+            availableModules: allModules.map((m, index) => ({
+              id: m.module_id || m.id || index + 1,
+              name: m.module_name || m.name || `Module ${index + 1}`,
+              sequence_order: m.sequence_order || index + 1
+            }))
+          });
+          return;
+        }
+
+        // Process the module data with enhancements
+        const processedModule = {
+          id: foundModule.module_id || foundModule.id || moduleId,
+          name: foundModule.module_name || foundModule.name || `Module ${moduleId}`,
+          description: foundModule.module_description || foundModule.description || 
+            generateDefaultDescription(foundModule.module_name || foundModule.name),
+          difficulty: foundModule.difficulty || 'Beginner',
+          estimated_duration_weeks: foundModule.estimated_duration_weeks || 
+            Math.ceil((foundModule.estimated_completion_time_hours || 3) / 10),
+          estimated_completion_hours: foundModule.estimated_completion_time_hours || 
+            foundModule.estimated_completion_hours || 3,
+          sequence_order: foundModule.sequence_order || parseInt(moduleId),
+          isCompleted: foundModule.isCompleted || false,
+          resources: processResources(foundModule.resources || [])
+        };
+
+        setModule(processedModule);
+        setResources(processedModule.resources);
         
-        // Fetch tasks for this module
-        const tasksData = await fetchMockModuleTasks(parseInt(moduleId));
-        setTasks(tasksData);
-        
-        // Fetch resources for this module
-        const resourcesData = await fetchMockModuleResources(parseInt(moduleId));
-        setResources(resourcesData);
-        
-        // Calculate progress based on completed tasks
-        const completedTasks = tasksData.filter(task => task.is_completed).length;
-        const totalTasks = tasksData.length;
-        setProgress(totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0);
-        
-      } catch (error) {
-        console.error('Error fetching module data:', error);
+        // Calculate progress based on completion status
+        setProgress(processedModule.isCompleted ? 100 : 0);
+
+        console.log("✅ Module loaded successfully:", processedModule.name);
+
+      } catch (err) {
+        console.error('Error fetching module data:', err);
+        setError({ type: 'general', message: err.message });
       } finally {
         setLoading(false);
       }
     };
-    
+
     fetchModuleData();
-  }, [moduleId]);
-  
-  const handleCompleteTask = async (taskId) => {
-    // Update task completion status
-    const updatedTasks = tasks.map(task => 
-      task.id === taskId ? { ...task, is_completed: true } : task
-    );
-    
-    setTasks(updatedTasks);
-    
-    // Recalculate progress
-    const completedTasks = updatedTasks.filter(task => task.is_completed).length;
-    const totalTasks = updatedTasks.length;
-    setProgress(totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0);
-    
-    // Update mock data
-    try {
-      // Update task progress
-      await updateMockTaskProgress(user.id, taskId, true);
-      
-      // Update learning streak
-      await updateMockLearningStreak(user.id);
-    } catch (error) {
-      console.error('Error updating task progress:', error);
-    }
-  };
-  
+  }, [moduleId, user]);
+
   const handleCompleteModule = async () => {
-    // Mark all tasks as completed
-    setTasks(prevTasks => 
-      prevTasks.map(task => ({ ...task, is_completed: true }))
-    );
-    
-    setProgress(100);
-    setModule(prevModule => ({ ...prevModule, isCompleted: true }));
-    
+    if (!user || !module) return;
+
     try {
-      // Update module progress
-      await updateMockModuleProgress(user.id, parseInt(moduleId), true);
+      // Update the module completion status in the user's learning path
+      const { data: pathData, error: fetchError } = await supabase
+        .from('user_learning_paths')
+        .select('path_data')
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Update the module completion status
+      const updatedPathData = { ...pathData.path_data };
       
-      // Update learning streak
-      await updateMockLearningStreak(user.id);
-      
+      const updateModuleInArray = (modules) => {
+        return modules.map(m => {
+          // Try multiple matching strategies
+          const moduleMatches = 
+            (m.module_id || m.id)?.toString() === moduleId ||
+            m.sequence_order?.toString() === moduleId ||
+            (m.module_name || m.name) === module.name;
+            
+          if (moduleMatches) {
+            return { ...m, isCompleted: true };
+          }
+          return m;
+        });
+      };
+
+      if (updatedPathData.phases) {
+        updatedPathData.phases = updatedPathData.phases.map(phase => ({
+          ...phase,
+          modules: phase.modules ? updateModuleInArray(phase.modules) : []
+        }));
+      } else if (updatedPathData.modules) {
+        updatedPathData.modules = updateModuleInArray(updatedPathData.modules);
+      }
+
+      // Save the updated path data
+      const { error: updateError } = await supabase
+        .from('user_learning_paths')
+        .update({ 
+          path_data: updatedPathData,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', user.id)
+        .eq('status', 'active');
+
+      if (updateError) throw updateError;
+
+      // Update local state
+      setModule(prev => ({ ...prev, isCompleted: true }));
+      setProgress(100);
+
       // Show success message
       alert('Congratulations! You have completed this module.');
       
-      // Redirect to home page
+      // Navigate back to home
       navigate('/');
+
     } catch (error) {
       console.error('Error completing module:', error);
+      alert('Failed to complete module. Please try again.');
     }
   };
-  
-  const renderTaskIcon = (type) => {
-    switch (type) {
-      case 'setup':
-        return (
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-        );
-      case 'coding':
-        return (
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-          </svg>
-        );
-      case 'quiz':
-        return (
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        );
+
+  const getResourceIcon = (type) => {
+    switch (type?.toLowerCase()) {
+      case 'video':
+        return <Video className="h-5 w-5 text-red-500" />;
+      case 'article':
+        return <FileText className="h-5 w-5 text-blue-500" />;
+      case 'documentation':
+        return <BookOpen className="h-5 w-5 text-green-500" />;
+      case 'tutorial':
+        return <PlayCircle className="h-5 w-5 text-purple-500" />;
       default:
-        return (
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-          </svg>
-        );
+        return <BookOpen className="h-5 w-5 text-gray-500" />;
     }
   };
-  
+
+  const getResourceTypeColor = (type) => {
+    switch (type?.toLowerCase()) {
+      case 'video':
+        return 'bg-red-50 text-red-700 border-red-200';
+      case 'article':
+        return 'bg-blue-50 text-blue-700 border-blue-200';
+      case 'documentation':
+        return 'bg-green-50 text-green-700 border-green-200';
+      case 'tutorial':
+        return 'bg-purple-50 text-purple-700 border-purple-200';
+      default:
+        return 'bg-gray-50 text-gray-700 border-gray-200';
+    }
+  };
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-foreground"></div>
+            <span className="ml-3 text-muted-foreground">Loading module...</span>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (error) {
+    return (
+      <Layout>
+        <div className="container mx-auto px-4 py-8">
+          <Card className="max-w-2xl mx-auto p-8">
+            <div className="text-center">
+              <div className="text-red-500 mb-4">
+                <AlertTriangle className="h-12 w-12 mx-auto" />
+              </div>
+              
+              {error.type === 'module_not_found' ? (
+                <>
+                  <h2 className="text-xl font-semibold mb-4">Module Not Found</h2>
+                  <p className="text-muted-foreground mb-6">
+                    The module you're looking for might have been modified or reorganized. 
+                    Here are the available modules in your roadmap:
+                  </p>
+                  
+                  <div className="space-y-3 mb-6">
+                    {error.availableModules?.map((availableModule) => (
+                      <Card key={availableModule.id} className="p-4 hover:bg-muted/50 transition-colors">
+                        <div className="flex justify-between items-center">
+                          <div className="text-left">
+                            <p className="font-medium">{availableModule.name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              Module {availableModule.sequence_order}
+                            </p>
+                          </div>
+                          <Link to={`/module/${availableModule.id}`}>
+                            <Button size="sm">
+                              Go to Module
+                            </Button>
+                          </Link>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h2 className="text-xl font-semibold mb-2">Module Not Found</h2>
+                  <p className="text-muted-foreground mb-4">{error.message}</p>
+                </>
+              )}
+              
+              <Link to="/">
+                <Button>Return to Dashboard</Button>
+              </Link>
+            </div>
+          </Card>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Rest of the component remains the same...
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8">
-        {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-btn-dark"></div>
-          </div>
-        ) : module ? (
-          <>
-            {/* Module Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
-              <div>
-                <Link to="/" className="text-btn-dark hover:underline mb-2 inline-flex items-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                  Back to Roadmap
-                </Link>
-                <h1 className="text-3xl font-bold">Module {module.sequence_order}: {module.name}</h1>
-                <p className="text-gray-600 mt-2">Estimated time: {module.estimated_completion_hours} hours</p>
+        {/* Module Header */}
+        <div className="mb-8">
+          <Link 
+            to="/" 
+            className="inline-flex items-center text-muted-foreground hover:text-foreground mb-4 transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Roadmap
+          </Link>
+          
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-2">
+                <Badge variant="outline">
+                  Module {module.sequence_order}
+                </Badge>
+                <Badge variant="secondary" className={getResourceTypeColor(module.difficulty)}>
+                  {module.difficulty}
+                </Badge>
+                {module.isCompleted && (
+                  <Badge variant="default" className="bg-green-100 text-green-800">
+                    <CheckCircle className="h-3 w-3 mr-1" />
+                    Completed
+                  </Badge>
+                )}
               </div>
               
-              <div className="mt-4 md:mt-0">
-                <div className="bg-gray-200 rounded-full h-4 w-64 overflow-hidden mb-2">
-                  <div 
-                    className="bg-green-500 h-full rounded-full transition-all duration-500 ease-out"
-                    style={{ width: `${progress}%` }}
-                  ></div>
+              <h1 className="text-3xl font-bold tracking-tight mb-2">
+                {module.name}
+              </h1>
+              
+              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <div className="flex items-center gap-1">
+                  <Clock className="h-4 w-4" />
+                  <span>{module.estimated_completion_hours} hours</span>
                 </div>
-                <div className="text-sm text-gray-600 text-right">{progress}% completed</div>
+                <div className="flex items-center gap-1">
+                  <BookOpen className="h-4 w-4" />
+                  <span>{resources.length} resources</span>
+                </div>
               </div>
             </div>
             
-            {/* Tabs */}
-            <div className="border-b mb-6">
-              <nav className="flex -mb-px">
-                <button
-                  className={`mr-8 py-4 px-1 font-medium text-sm border-b-2 ${
-                    activeTab === 'overview'
-                      ? 'border-btn-dark text-btn-dark'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                  onClick={() => setActiveTab('overview')}
-                >
-                  Overview
-                </button>
-                <button
-                  className={`mr-8 py-4 px-1 font-medium text-sm border-b-2 ${
-                    activeTab === 'tasks'
-                      ? 'border-btn-dark text-btn-dark'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                  onClick={() => setActiveTab('tasks')}
-                >
-                  Tasks
-                </button>
-                <button
-                  className={`mr-8 py-4 px-1 font-medium text-sm border-b-2 ${
-                    activeTab === 'resources'
-                      ? 'border-btn-dark text-btn-dark'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                  onClick={() => setActiveTab('resources')}
-                >
-                  Learning Resources
-                </button>
-              </nav>
+            <div className="flex flex-col items-end gap-2">
+              <div className="text-right">
+                <div className="text-2xl font-bold">
+                  {progress}%
+                </div>
+                <p className="text-sm text-muted-foreground">completed</p>
+              </div>
+              <Progress value={progress} className="w-32" />
             </div>
-            
-            {/* Tab Content */}
-            <div className="mb-12">
-              {/* Overview Tab */}
-              {activeTab === 'overview' && (
-                <div>
-                  <h2 className="text-xl font-semibold mb-4">Module Objectives</h2>
-                  <ul className="list-disc list-inside space-y-2 mb-6">
-                    {module.description.split('|').map((objective, index) => (
-                      <li key={index} className="text-gray-700">{objective.trim()}</li>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="border-b mb-8">
+          <nav className="flex gap-8">
+            {['overview', 'resources'].map((tab) => (
+              <button
+                key={tab}
+                className={`py-4 px-1 font-medium text-sm border-b-2 capitalize transition-colors ${
+                  activeTab === tab
+                    ? 'border-foreground text-foreground'
+                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground'
+                }`}
+                onClick={() => setActiveTab(tab)}
+              >
+                {tab}
+              </button>
+            ))}
+          </nav>
+        </div>
+
+        {/* Tab Content */}
+        <div className="space-y-8">
+          {/* Overview Tab */}
+          {activeTab === 'overview' && (
+            <div className="space-y-8">
+              {/* Module Objectives */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Module Objectives</CardTitle>
+                  <CardDescription>
+                    What you'll learn in this module
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-3">
+                    {module.description?.split('|').map((objective, index) => (
+                      <li key={index} className="flex items-start gap-3">
+                        <div className="w-2 h-2 rounded-full bg-foreground mt-2 flex-shrink-0" />
+                        <span className="text-sm leading-relaxed">{objective.trim()}</span>
+                      </li>
                     ))}
                   </ul>
-                  
-                  <h2 className="text-xl font-semibold mb-4">Module Overview</h2>
-                  <p className="text-gray-700 mb-6">
-                    This module introduces you to Node.js, a runtime environment that allows you to run JavaScript outside the browser. 
-                    You'll learn what Node.js is, its core features, common use cases, and how to set up a development environment. 
-                    By the end of this module, you'll have a solid understanding of Node.js fundamentals and be able to create 
-                    simple server-side applications.
+                </CardContent>
+              </Card>
+
+              {/* Learning Path */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Learning Path</CardTitle>
+                  <CardDescription>
+                    Follow this structured approach to master the module
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-start gap-3 p-4 bg-muted/30 rounded-lg">
+                      <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                        <BookOpen className="h-4 w-4 text-blue-600" />
+                      </div>
+                      <div>
+                        <h4 className="font-medium mb-1">1. Study the Resources</h4>
+                        <p className="text-sm text-muted-foreground">
+                          Go through all the learning materials in the Resources tab
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-start gap-3 p-4 bg-muted/30 rounded-lg">
+                      <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                        <Code className="h-4 w-4 text-green-600" />
+                      </div>
+                      <div>
+                        <h4 className="font-medium mb-1">2. Practice & Apply</h4>
+                        <p className="text-sm text-muted-foreground">
+                          Work through practical examples and exercises
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-start gap-3 p-4 bg-muted/30 rounded-lg">
+                      <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
+                        <CheckCircle className="h-4 w-4 text-purple-600" />
+                      </div>
+                      <div>
+                        <h4 className="font-medium mb-1">3. Complete the Module</h4>
+                        <p className="text-sm text-muted-foreground">
+                          Mark the module as complete when you've mastered the concepts
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Action Buttons */}
+              <div className="flex gap-4">
+                <Button 
+                  onClick={() => setActiveTab('resources')}
+                  className="flex-1 sm:flex-none"
+                >
+                  <BookOpen className="h-4 w-4 mr-2" />
+                  View Resources
+                </Button>
+                
+                {!module.isCompleted && (
+                  <Button 
+                    variant="outline"
+                    onClick={handleCompleteModule}
+                    className="flex-1 sm:flex-none"
+                  >
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Mark as Complete
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Resources Tab */}
+          {activeTab === 'resources' && (
+            <div className="space-y-6">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="text-xl font-semibold">Learning Resources</h2>
+                  <p className="text-muted-foreground">
+                    {resources.length} resources to help you master this module
                   </p>
-                  
-                  <h2 className="text-xl font-semibold mb-4">What You'll Learn</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                    <div className="bg-gray-50 p-4 rounded-lg border">
-                      <h3 className="font-medium text-gray-800 mb-2">Core Concepts</h3>
-                      <ul className="list-disc list-inside text-gray-700 space-y-1">
-                        <li>Event-driven architecture</li>
-                        <li>Non-blocking I/O model</li>
-                        <li>JavaScript runtime environment</li>
-                      </ul>
-                    </div>
-                    <div className="bg-gray-50 p-4 rounded-lg border">
-                      <h3 className="font-medium text-gray-800 mb-2">Practical Skills</h3>
-                      <ul className="list-disc list-inside text-gray-700 space-y-1">
-                        <li>Setting up Node.js projects</li>
-                        <li>Writing server-side JavaScript</li>
-                        <li>Working with Node.js modules</li>
-                      </ul>
-                    </div>
-                  </div>
-                  
-                  <div className="mt-8">
-                    <Button
-                      variant="primary"
-                      onClick={() => setActiveTab('tasks')}
-                    >
-                      Start Learning
-                    </Button>
-                  </div>
                 </div>
-              )}
-              
-              {/* Tasks Tab */}
-              {activeTab === 'tasks' && (
-                <div>
-                  <h2 className="text-xl font-semibold mb-6">Tasks to Complete</h2>
-                  
-                  <div className="space-y-6">
-                    {tasks.map(task => (
-                      <div 
-                        key={task.id} 
-                        className={`border rounded-lg p-5 transition-all ${
-                          task.is_completed ? 'bg-gray-50 border-green-500' : 'bg-white hover:bg-gray-50'
-                        }`}
-                      >
-                        <div className="flex items-start">
-                          <div className="flex-shrink-0 mr-4">
-                            {renderTaskIcon(task.task_type)}
+              </div>
+
+              {resources.length > 0 ? (
+                <div className="grid gap-4">
+                  {resources.map((resource, index) => (
+                    <Card key={index} className="hover:shadow-md transition-shadow">
+                      <CardContent className="p-6">
+                        <div className="flex items-start gap-4">
+                          <div className="flex-shrink-0">
+                            {getResourceIcon(resource.resource_type)}
                           </div>
-                          <div className="flex-1">
-                            <h3 className="font-medium text-lg">{task.title}</h3>
-                            <p className="text-gray-600 mt-1">{task.description}</p>
-                            <div className="mt-3 flex items-center justify-between">
-                              <span className="text-sm text-gray-500">
-                                Estimated time: {task.estimated_time_minutes} minutes
-                              </span>
-                              {task.is_completed ? (
-                                <span className="inline-flex items-center text-green-600 text-sm font-medium">
-                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                                  </svg>
-                                  Completed
-                                </span>
-                              ) : (
-                                <Button
-                                  variant="primary"
-                                  onClick={() => handleCompleteTask(task.id)}
-                                >
-                                  Mark as Complete
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  
-                  <div className="mt-8 flex justify-between items-center">
-                    <div>
-                      <p className="text-gray-600">
-                        Module progress: <span className="font-medium">{progress}%</span>
-                      </p>
-                    </div>
-                    <button
-                      className={`px-6 py-3 rounded-md transition-all ${
-                        progress === 100
-                          ? 'bg-green-500 text-white hover:bg-green-600'
-                          : 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                      }`}
-                      onClick={handleCompleteModule}
-                      disabled={progress !== 100}
-                    >
-                      {progress === 100 ? 'Complete Module' : 'Complete All Tasks First'}
-                    </button>
-                  </div>
-                </div>
-              )}
-              
-              {/* Resources Tab */}
-              {activeTab === 'resources' && (
-                <div>
-                  <h2 className="text-xl font-semibold mb-6">Learning Resources</h2>
-                  
-                  <div className="space-y-6">
-                    {resources.map(resource => (
-                      <div key={resource.id} className="border rounded-lg p-5 transition-all bg-white hover:bg-gray-50">
-                        <div className="flex items-start">
-                          <div className="flex-shrink-0 mr-4">
-                            {resource.resource_type === 'video' && (
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                              </svg>
-                            )}
-                            {resource.resource_type === 'documentation' && (
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                              </svg>
-                            )}
-                            {resource.resource_type === 'article' && (
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
-                              </svg>
-                            )}
-                          </div>
-                          <div className="flex-1">
-                            <h3 className="font-medium text-lg">{resource.title}</h3>
-                            <p className="text-gray-600 mt-1">
-                              <span className="capitalize">{resource.resource_type}</span> • {resource.estimated_time_minutes} minutes
-                            </p>
-                    <div className="mt-3">
-                              <a 
-                                href={resource.url} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center text-btn-dark hover:underline"
+                          
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-4 mb-2">
+                              <h3 className="font-medium text-lg leading-tight">
+                                {resource.title}
+                              </h3>
+                              <Badge 
+                                variant="outline" 
+                                className={`flex-shrink-0 ${getResourceTypeColor(resource.resource_type)}`}
                               >
-                                Access Resource
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" viewBox="0 0 20 20" fill="currentColor">
-                                  <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
-                                </svg>
-                              </a>
+                                {resource.resource_type}
+                              </Badge>
                             </div>
+                            
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
+                              <div className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                <span>{resource.estimated_time_minutes} minutes</span>
+                              </div>
+                            </div>
+                            
+                            {resource.url && resource.url !== '#' && (
+                              <a
+                                href={resource.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center text-foreground hover:text-foreground/80 transition-colors"
+                              >
+                                <span className="font-medium">Access Resource</span>
+                                <ExternalLink className="h-4 w-4 ml-2" />
+                              </a>
+                            )}
                           </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
+              ) : (
+                <Card className="p-8 text-center">
+                  <BookOpen className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-medium mb-2">No resources available</h3>
+                  <p className="text-muted-foreground">
+                    Resources for this module will be added soon.
+                  </p>
+                </Card>
               )}
             </div>
-          </>
-        ) : (
-          <div className="text-center p-8">
-            <p className="text-gray-600 mb-4">Module not found.</p>
-            <Link to="/">
-              <button className="px-6 py-2 bg-btn-dark text-white rounded-md hover:bg-opacity-90 transition-all">
-                Return to Dashboard
-              </button>
-            </Link>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </Layout>
   );

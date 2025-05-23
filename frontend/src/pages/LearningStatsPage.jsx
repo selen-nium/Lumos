@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
-import Layout from '../components/common/Layout';
-import Button from '../components/common/Button';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 const LearningStatsPage = () => {
   const { user } = useAuth();

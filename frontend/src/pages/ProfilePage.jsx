@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import Layout from '../components/common/Layout';
-import Button from '../components/common/Button';
-import Input from '../components/common/Input';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 const ProfilePage = () => {
   const { user } = useAuth();

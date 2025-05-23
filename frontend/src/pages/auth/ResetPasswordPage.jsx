@@ -3,9 +3,13 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import { supabase } from '../../supabaseClient';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { CheckCircle } from "lucide-react";
 import Logo from '../../components/common/Logo';
-import Input from '../../components/common/Input';
-import Button from '../../components/common/Button';
 
 const ResetPasswordPage = () => {
   const [error, setError] = useState('');
@@ -15,19 +19,15 @@ const ResetPasswordPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Check for access token and type in URL
   useEffect(() => {
     const handlePasswordReset = async () => {
       try {
-        // Parse the URL for hash parameters
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
         const accessToken = hashParams.get('access_token');
         const refreshToken = hashParams.get('refresh_token');
         const type = hashParams.get('type');
         
-        // If this is a recovery flow and we have the token
         if (type === 'recovery' && accessToken) {
-          // Set the session using the access and refresh tokens
           const { data, error } = await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken
@@ -41,7 +41,6 @@ const ResetPasswordPage = () => {
             setEmail(data.user.email);
           }
         } else {
-          // Check existing session as fallback
           const { data } = await supabase.auth.getSession();
           if (data?.session?.user?.email) {
             setEmail(data.session.user.email);
@@ -84,7 +83,6 @@ const ResetPasswordPage = () => {
         
         setIsSuccess(true);
         
-        // Redirect to login page after 3 seconds
         setTimeout(() => {
           navigate('/login');
         }, 3000);
@@ -99,101 +97,104 @@ const ResetPasswordPage = () => {
   });
 
   return (
-    <div className="min-h-screen bg-primary-light flex">
-      {/* Left side - Logo */}
-      <div className="w-1/2 flex justify-center items-center bg-primary-light">
-        <Logo />
+    <div className="min-h-screen bg-background flex">
+      {/* Left side - Logo and branding */}
+      <div className="hidden lg:flex lg:w-5/12 flex-col justify-center items-center bg-muted/10 p-8">
+        <div className="max-w-md text-center space-y-6">
+          <Logo />
+        </div>
       </div>
       
-      {/* Custom divider */}
-      <div className="flex items-center">
-        <div className="h-64 w-1 bg-divider rounded-full"></div>
-      </div>
-      
-      {/* Right side - Reset Password form */}
-      <div className="w-1/2 flex justify-center items-center p-8">
-        <div className="w-full max-w-md">
+      {/* Right side - Form */}
+      <div className="flex-1 lg:w-7/12 flex justify-center items-center p-8">
+        <Card className="w-full max-w-md">
           {isSuccess ? (
-            <div className="text-center">
+            <CardContent className="text-center space-y-4 py-8">
               <div className="flex justify-center mb-4">
-                <svg 
-                  className="w-16 h-16 text-success" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24" 
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    strokeWidth="2" 
-                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
+                <CheckCircle className="w-16 h-16 text-green-600" />
               </div>
-              <h2 className="text-2xl font-medium text-text mb-2">Password Reset Successful</h2>
-              <p className="text-gray-600 mb-6">
+              <CardTitle className="text-2xl font-semibold">
+                Password Updated
+              </CardTitle>
+              <CardDescription className="text-base">
                 Your password has been successfully reset. You will be redirected to the login page shortly.
-              </p>
-            </div>
+              </CardDescription>
+            </CardContent>
           ) : (
             <>
-              <h2 className="text-2xl font-medium text-text mb-2 text-center">Reset Password</h2>
-              <p className="text-gray-600 text-center mb-6">
-                {email ? `Please enter a new password for ${email}` : 'Set your new password'}
-              </p>
+              <CardHeader className="space-y-1">
+                <CardTitle className="text-2xl font-semibold text-center">
+                  Reset Password
+                </CardTitle>
+                <CardDescription className="text-center">
+                  {email ? `Set a new password for ${email}` : 'Enter your new password'}
+                </CardDescription>
+              </CardHeader>
               
-              {error ? (
-                <div className="text-center space-y-4">
-                  <div className="text-error text-xs">{error}</div>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    fullWidth
-                    onClick={() => navigate('/forgot-password')}
-                  >
-                    Request New Reset Link
-                  </Button>
-                </div>
-              ) : (
-                <form onSubmit={formik.handleSubmit} className="space-y-6">
-                  <div>
-                    <Input
-                      type="password"
-                      name="password"
-                      placeholder="New Password"
-                      value={formik.values.password}
-                      onChange={formik.handleChange}
-                      onBlur={formik.handleBlur}
-                      error={formik.touched.password && formik.errors.password}
-                    />
+              <CardContent className="space-y-4">
+                {error ? (
+                  <div className="space-y-4">
+                    <Alert variant="destructive">
+                      <AlertDescription>{error}</AlertDescription>
+                    </Alert>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => navigate('/forgot-password')}
+                    >
+                      Request New Reset Link
+                    </Button>
                   </div>
-                  
-                  <div>
-                    <Input
-                      type="password"
-                      name="confirmPassword"
-                      placeholder="Confirm New Password"
-                      value={formik.values.confirmPassword}
-                      onChange={formik.handleChange}
-                      onBlur={formik.handleBlur}
-                      error={formik.touched.confirmPassword && formik.errors.confirmPassword}
-                    />
-                  </div>
-                  
-                  <Button
-                    type="submit"
-                    variant="primary"
-                    fullWidth
-                    disabled={isLoading}
-                  >
-                    {isLoading ? 'Updating...' : 'Reset Password'}
-                  </Button>
-                </form>
-              )}
+                ) : (
+                  <form onSubmit={formik.handleSubmit} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="password">New Password</Label>
+                      <Input
+                        id="password"
+                        name="password"
+                        type="password"
+                        placeholder="Enter new password"
+                        value={formik.values.password}
+                        onChange={formik.handleChange}
+                        onBlur={formik.handleBlur}
+                        className={formik.touched.password && formik.errors.password ? 'border-destructive' : ''}
+                      />
+                      {formik.touched.password && formik.errors.password && (
+                        <p className="text-sm text-destructive">{formik.errors.password}</p>
+                      )}
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="confirmPassword">Confirm Password</Label>
+                      <Input
+                        id="confirmPassword"
+                        name="confirmPassword"
+                        type="password"
+                        placeholder="Confirm new password"
+                        value={formik.values.confirmPassword}
+                        onChange={formik.handleChange}
+                        onBlur={formik.handleBlur}
+                        className={formik.touched.confirmPassword && formik.errors.confirmPassword ? 'border-destructive' : ''}
+                      />
+                      {formik.touched.confirmPassword && formik.errors.confirmPassword && (
+                        <p className="text-sm text-destructive">{formik.errors.confirmPassword}</p>
+                      )}
+                    </div>
+                    
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      disabled={isLoading}
+                    >
+                      {isLoading ? 'Updating...' : 'Update Password'}
+                    </Button>
+                  </form>
+                )}
+              </CardContent>
             </>
           )}
-        </div>
+        </Card>
       </div>
     </div>
   );

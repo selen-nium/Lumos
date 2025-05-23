@@ -3,9 +3,13 @@ import { Link } from 'react-router-dom';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import { supabase } from '../../supabaseClient';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { CheckCircle } from "lucide-react";
 import Logo from '../../components/common/Logo';
-import Input from '../../components/common/Input';
-import Button from '../../components/common/Button';
 
 const ForgotPasswordPage = () => {
   const [error, setError] = useState('');
@@ -26,7 +30,6 @@ const ForgotPasswordPage = () => {
       setError('');
       
       try {
-        // Use Supabase directly to send password reset email
         const { error } = await supabase.auth.resetPasswordForEmail(values.email, {
           redirectTo: `${window.location.origin}/reset-password`,
         });
@@ -44,90 +47,90 @@ const ForgotPasswordPage = () => {
   });
 
   return (
-    <div className="min-h-screen bg-primary-light flex">
-      {/* Left side - Logo */}
-      <div className="w-1/2 flex justify-center items-center bg-primary-light">
+    <div className="min-h-screen bg-background flex">
+      {/* Left side - Logo and branding */}
+      <div className="hidden lg:flex lg:w-5/12 flex-col justify-center items-center bg-muted/30">
+        <div className="max-w-md text-center space-y-6">
           <Logo />
+        </div>
       </div>
       
-      {/* Custom divider */}
-      <div className="flex items-center">
-        <div className="h-64 w-1 bg-divider rounded-full"></div>
-      </div>
-      
-      {/* Right side - Forgot Password form */}
-      <div className="w-1/2 flex justify-center items-center p-8">
-        <div className="w-full max-w-md">
+      {/* Right side - Form */}
+      <div className="flex-1 lg:w-7/12 flex justify-center items-center p-6">
+        <Card className="w-full max-w-md">
           {!isSubmitted ? (
             <>
-              <h2 className="text-2xl font-medium text-text mb-2 text-center">Forgot Password</h2>
-              <p className="text-gray-600 text-center mb-6">
-                Enter your email address and we'll send you a link to reset your password.
-              </p>
+              <CardHeader className="space-y-1">
+                <CardTitle className="text-2xl font-semibold text-center">
+                  Reset Password
+                </CardTitle>
+                <CardDescription className="text-center">
+                  Enter your email address and we'll send you a reset link
+                </CardDescription>
+              </CardHeader>
               
-              <form onSubmit={formik.handleSubmit} className="space-y-6">
-                <div>
-                  <Input
-                    type="email"
-                    name="email"
-                    placeholder="Email"
-                    value={formik.values.email}
-                    onChange={formik.handleChange}
-                    onBlur={formik.handleBlur}
-                    error={formik.touched.email && formik.errors.email}
-                  />
-                </div>
+              <CardContent className="space-y-4">
+                <form onSubmit={formik.handleSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      name="email"
+                      type="email"
+                      placeholder="Enter your email"
+                      value={formik.values.email}
+                      onChange={formik.handleChange}
+                      onBlur={formik.handleBlur}
+                      className={formik.touched.email && formik.errors.email ? 'border-destructive' : ''}
+                    />
+                    {formik.touched.email && formik.errors.email && (
+                      <p className="text-sm text-destructive">{formik.errors.email}</p>
+                    )}
+                  </div>
 
-                {error && (
-                  <div className="text-error text-xs text-center">{error}</div>
-                )}
-                
-                <Button
-                  type="submit"
-                  variant="primary"
-                  fullWidth
-                  disabled={isLoading}
-                >
-                  {isLoading ? 'Sending...' : 'Send Reset Link'}
-                </Button>
-                
-                <div className="text-xs text-center">
-                  <Link to="/login" className="text-btn-dark hover:underline">
-                    Back to Login
-                  </Link>
-                </div>
-              </form>
+                  {error && (
+                    <Alert variant="destructive">
+                      <AlertDescription>{error}</AlertDescription>
+                    </Alert>
+                  )}
+                  
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? 'Sending...' : 'Send Reset Link'}
+                  </Button>
+                  
+                  <div className="text-center">
+                    <Button variant="link" asChild className="px-0 font-normal">
+                      <Link to="/login">
+                        Back to Login
+                      </Link>
+                    </Button>
+                  </div>
+                </form>
+              </CardContent>
             </>
           ) : (
-            <div className="text-center">
+            <CardContent className="text-center space-y-4 py-8">
               <div className="flex justify-center mb-4">
-                <svg 
-                  className="w-16 h-16 text-success" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24" 
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    strokeWidth="2" 
-                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
+                <CheckCircle className="w-16 h-16 text-green-600" />
               </div>
-              <h2 className="text-2xl font-medium text-text mb-2">Check Your Email</h2>
-              <p className="text-gray-600 mb-6">
-                We've sent a password reset link to {formik.values.email}
-              </p>
-              <div className="text-xs">
-                <Link to="/login" className="text-btn-dark hover:underline">
+              <CardTitle className="text-2xl font-semibold">
+                Check Your Email
+              </CardTitle>
+              <CardDescription className="text-base">
+                We've sent a password reset link to <strong>{formik.values.email}</strong>
+              </CardDescription>
+              <Button variant="link" asChild className="px-0 font-normal">
+                <Link to="/login">
                   Back to Login
                 </Link>
-              </div>
-            </div>
+              </Button>
+            </CardContent>
           )}
-        </div>
+        </Card>
       </div>
     </div>
   );

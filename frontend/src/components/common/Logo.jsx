@@ -1,13 +1,21 @@
 import { Link } from 'react-router-dom';
-// import logo  '../../../public/logo.svg'
 
 const Logo = () => {
   return (
-    <div className="text-center relative py-12">
-          <div className="flex items-center justify-center">
-            <img src="/logo.svg" alt="Lumos Logo" className="w-12 h-12 mr-3" />
-            <div className="logo text-6xl text-text">Lumos</div>
-          </div>
+    <div className="text-center py-16">
+      <Link to="/home" className="inline-flex items-center group">
+        <img 
+          src="/Lumos/logo.svg" 
+          alt="Lumos Logo"
+          className="w-16 h-16 mr-4 transition-transform group-hover:scale-105" 
+        />
+        <div 
+          className="text-7xl text-foreground transition-colors group-hover:text-primary/80"
+          style={{ fontFamily: 'Cookie, serif' }}
+        >
+          Lumos
+        </div>
+      </Link>
     </div>
   );
 };
