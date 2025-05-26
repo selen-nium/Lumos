@@ -136,6 +136,7 @@ const ModulePage = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState(null);
+  const [tasks, setTasks] = useState([]);
 
   useEffect(() => {
     const fetchModuleData = async () => {
@@ -187,43 +188,38 @@ const ModulePage = () => {
           allModules = roadmap.modules;
         }
 
-        console.log("📦 All modules found:", allModules.map(m => ({
-          id: m.module_id || m.id,
-          name: m.module_name || m.name,
-          sequence: m.sequence_order
-        })));
+        // console.log("📦 All modules found:", allModules.map(m => ({
+        //   id: m.module_id || m.id,
+        //   name: m.module_name || m.name,
+        //   sequence: m.sequence_order
+        // }))
+        foundModule = allModules.find(
+          m => m.module_id?.toString() === moduleId
+        );
+      
 
         // Try different search strategies
-        const searchStrategies = [
-          // Strategy 1: Exact module_id match
-          () => allModules.find(m => (m.module_id || m.id)?.toString() === moduleId),
+        // const searchStrategies = [
+        //   // Strategy 1: Exact module_id match
+        //   () => allModules.find(m => (m.module_id || m.id)?.toString() === moduleId),
           
-          // Strategy 2: Sequence order match (for when module IDs change after modification)
-          () => allModules.find(m => m.sequence_order?.toString() === moduleId),
+        //   // Strategy 2: Sequence order match (for when module IDs change after modification)
+        //   () => allModules.find(m => m.sequence_order?.toString() === moduleId),
           
-          // Strategy 3: Array index match (fallback)
-          () => allModules[parseInt(moduleId) - 1],
+        //   // Strategy 3: Array index match (fallback)
+        //   () => allModules[parseInt(moduleId) - 1],
           
-          // Strategy 4: Find first module with matching name pattern
-          () => allModules.find(m => {
-            const name = (m.module_name || m.name || '').toLowerCase();
-            return name.includes('module ' + moduleId) || name.includes('#' + moduleId);
-          }),
+        //   // Strategy 4: Find first module with matching name pattern
+        //   () => allModules.find(m => {
+        //     const name = (m.module_name || m.name || '').toLowerCase();
+        //     return name.includes('module ' + moduleId) || name.includes('#' + moduleId);
+        //   }),
           
-          // Strategy 5: Just get the module at the position (zero-indexed)
-          () => allModules[parseInt(moduleId)]
-        ];
+        //   // Strategy 5: Just get the module at the position (zero-indexed)
+        //   () => allModules[parseInt(moduleId)]
+        // ];
 
-        for (let i = 0; i < searchStrategies.length; i++) {
-          foundModule = searchStrategies[i]();
-          if (foundModule) {
-            console.log(`✅ Found module using strategy ${i + 1}:`, {
-              id: foundModule.module_id || foundModule.id,
-              name: foundModule.module_name || foundModule.name
-            });
-            break;
-          }
-        }
+        // 
 
         if (!foundModule) {
           console.error("❌ Module not found with any strategy");
@@ -264,6 +260,7 @@ const ModulePage = () => {
 
         setModule(processedModule);
         setResources(processedModule.resources);
+        setTasks(foundModule.tasks || []);
         
         // Calculate progress based on completion status
         setProgress(processedModule.isCompleted ? 100 : 0);
@@ -510,7 +507,7 @@ const ModulePage = () => {
         {/* Tabs */}
         <div className="border-b mb-8">
           <nav className="flex gap-8">
-            {['overview', 'resources'].map((tab) => (
+            {['overview', 'resources', 'tasks'].map((tab) => (
               <button
                 key={tab}
                 className={`py-4 px-1 font-medium text-sm border-b-2 capitalize transition-colors ${
@@ -694,6 +691,58 @@ const ModulePage = () => {
               )}
             </div>
           )}
+
+          {activeTab === 'tasks' && (
+            <div className="space-y-6">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="text-xl font-semibold">Hands-on Tasks</h2>
+                  <p className="text-muted-foreground">
+                    {tasks.length} practical tasks to apply your skills
+                  </p>
+                </div>
+              </div>
+
+              {tasks.length > 0 ? (
+                <div className="grid gap-4">
+                  {tasks.map((task, index) => (
+                    <Card key={index} className="hover:shadow-md transition-shadow">
+                      <CardContent className="p-6">
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between gap-4 mb-1">
+                            <h3 className="font-medium text-lg leading-tight">
+                              {task.task_title}
+                            </h3>
+                            <Badge variant="outline" className="capitalize">
+                              {task.task_type}
+                            </Badge>
+                          </div>
+
+                          <p className="text-sm text-muted-foreground">
+                            {task.task_description}
+                          </p>
+
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Clock className="h-3 w-3" />
+                            <span>{task.estimated_time_minutes} minutes</span>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <Card className="p-8 text-center">
+                  <Code className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-medium mb-2">No tasks available</h3>
+                  <p className="text-muted-foreground">
+                    Tasks for this module will be added soon.
+                  </p>
+                </Card>
+              )}
+            </div>
+          )}
+
         </div>
       </div>
     </Layout>

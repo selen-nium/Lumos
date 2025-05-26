@@ -32,7 +32,7 @@ const enhanceModuleData = (modules) => {
       enhanced.resources = enhanced.resources.map((resource, resourceIndex) => {
         if (typeof resource === 'string') {
           return {
-            id: resourceIndex + 1,
+            resource_id: `${enhanced.module_id || index + 1}_resource_${resourceIndex + 1}`,
             resource_title: resource,
             url: generateResourceUrl(resource),
             resource_type: detectResourceType(resource),
@@ -41,7 +41,7 @@ const enhanceModuleData = (modules) => {
         }
         // If already an object, ensure it has all required fields
         return {
-          id: resource.id || resourceIndex + 1,
+          resource_id: resource.resource_id || `${enhanced.module_id || index + 1}_resource_${resourceIndex + 1}`,
           resource_title: resource.resource_title || resource.title || `Resource ${resourceIndex + 1}`,
           url: resource.url || generateResourceUrl(resource.resource_title || resource.title || ''),
           resource_type: resource.resource_type || resource.type || 'article',
@@ -51,6 +51,21 @@ const enhanceModuleData = (modules) => {
     } else {
       // If no resources, add default ones based on module name
       enhanced.resources = generateDefaultResources(enhanced.module_name);
+    }
+    
+    // ADD TASKS GENERATION HERE - this was missing!
+    if (!enhanced.tasks || !Array.isArray(enhanced.tasks) || enhanced.tasks.length === 0) {
+      enhanced.tasks = generateDefaultTasks(enhanced.module_name, enhanced.module_id || index + 1);
+    } else {
+      // Ensure existing tasks have proper structure
+      enhanced.tasks = enhanced.tasks.map((task, taskIndex) => ({
+        task_id: task.task_id || `${enhanced.module_id || index + 1}_task_${taskIndex + 1}`,
+        task_title: task.task_title || task.title || `Task ${taskIndex + 1}`,
+        task_description: task.task_description || task.description || 'Complete this hands-on task',
+        task_type: task.task_type || task.type || 'practice',
+        estimated_time_minutes: task.estimated_time_minutes || 45,
+        is_completed: false
+      }));
     }
     
     // Ensure sequence_order
@@ -65,6 +80,95 @@ const enhanceModuleData = (modules) => {
     
     return enhanced;
   });
+};
+
+// hardcode default tasks
+const generateDefaultTasks = (moduleName, moduleId) => {
+  if (!moduleName) return [];
+  
+  const name = moduleName.toLowerCase();
+  const tasks = [];
+  
+  if (name.includes('html') || name.includes('css')) {
+    tasks.push(
+      {
+        task_id: `${moduleId}_task_1`,
+        task_title: 'Create a Personal Portfolio Page',
+        task_description: 'Build a responsive portfolio page using HTML5 semantic elements and CSS. Include sections for about, projects, and contact information.',
+        task_type: 'project',
+        estimated_time_minutes: 120,
+        is_completed: false
+      },
+      {
+        task_id: `${moduleId}_task_2`,
+        task_title: 'CSS Layout Challenge',
+        task_description: 'Complete 5 layout challenges using Flexbox and Grid. Practice creating common UI patterns like navigation bars, card layouts, and footers.',
+        task_type: 'practice',
+        estimated_time_minutes: 90,
+        is_completed: false
+      }
+    );
+  } else if (name.includes('javascript')) {
+    tasks.push(
+      {
+        task_id: `${moduleId}_task_1`,
+        task_title: 'JavaScript Fundamentals Quiz',
+        task_description: 'Complete a quiz covering variables, functions, arrays, and objects. Test your understanding of core JavaScript concepts.',
+        task_type: 'quiz',
+        estimated_time_minutes: 30,
+        is_completed: false
+      },
+      {
+        task_id: `${moduleId}_task_2`,
+        task_title: 'Build an Interactive To-Do List',
+        task_description: 'Create a to-do list application with add, delete, and mark complete functionality. Use DOM manipulation and event listeners.',
+        task_type: 'project',
+        estimated_time_minutes: 90,
+        is_completed: false
+      }
+    );
+  } else if (name.includes('react')) {
+    tasks.push(
+      {
+        task_id: `${moduleId}_task_1`,
+        task_title: 'Component Composition Exercise',
+        task_description: 'Build a reusable component library with at least 5 components (Button, Card, Modal, etc.). Practice props and component composition.',
+        task_type: 'practice',
+        estimated_time_minutes: 60,
+        is_completed: false
+      },
+      {
+        task_id: `${moduleId}_task_2`,
+        task_title: 'State Management Challenge',
+        task_description: 'Build a shopping cart feature using useState and useReducer. Implement add to cart, remove, and quantity update functionality.',
+        task_type: 'project',
+        estimated_time_minutes: 120,
+        is_completed: false
+      }
+    );
+  } else {
+    // Generic tasks for any module
+    tasks.push(
+      {
+        task_id: `${moduleId}_task_1`,
+        task_title: `${moduleName} Hands-on Practice`,
+        task_description: `Apply the concepts learned in ${moduleName} by completing practical exercises. Focus on understanding core principles through implementation.`,
+        task_type: 'practice',
+        estimated_time_minutes: 60,
+        is_completed: false
+      },
+      {
+        task_id: `${moduleId}_task_2`,
+        task_title: `Build a ${moduleName} Project`,
+        task_description: `Create a small project that demonstrates your understanding of ${moduleName}. This project should incorporate the main concepts covered in the module.`,
+        task_type: 'project',
+        estimated_time_minutes: 90,
+        is_completed: false
+      }
+    );
+  }
+  
+  return tasks;
 };
 
 const generateModuleDescription = (moduleName) => {
@@ -141,21 +245,47 @@ const generateDefaultResources = (moduleName) => {
 
 const generateResourceUrl = (resourceTitle) => {
   const title = resourceTitle.toLowerCase();
+  const cleanTitle = resourceTitle.trim();
   
+  // YouTube resources
   if (title.includes('youtube') || title.includes('video')) {
-    const searchTerm = resourceTitle.replace(/youtube\s+tutorials?\s+on\s+/i, '').replace(/video\s+tutorial/i, '').trim();
+    const searchTerm = cleanTitle
+      .replace(/youtube\s+tutorials?\s+on\s+/i, '')
+      .replace(/video\s+tutorial/i, '')
+      .trim();
     return `https://www.youtube.com/results?search_query=${encodeURIComponent(searchTerm + ' tutorial')}`;
   }
   
-  if (title.includes('online course') || title.includes('course')) {
-    const searchTerm = resourceTitle.replace(/online\s+course:\s*/i, '').replace(/course/i, '').trim();
+  // Online courses - be more specific
+  if (title.includes('coursera') || (title.includes('online course') && !title.includes('freecodecamp'))) {
+    const searchTerm = cleanTitle
+      .replace(/online\s+course:\s*/i, '')
+      .replace(/coursera\s*/i, '')
+      .replace(/course/i, '')
+      .trim();
     return `https://www.coursera.org/search?query=${encodeURIComponent(searchTerm)}`;
   }
   
-  if (title.includes('documentation') || title.includes('docs')) {
-    const searchTerm = resourceTitle.replace(/documentation:\s*/i, '').replace(/official\s+documentation/i, '').trim();
+  // FreeCodeCamp specific
+  if (title.includes('freecodecamp') || title.includes('fcc')) {
+    const searchTerm = cleanTitle
+      .replace(/freecodecamp\s*/i, '')
+      .replace(/fcc\s*/i, '')
+      .replace(/tutorial\s*/i, '')
+      .replace(/guide\s*/i, '')
+      .trim();
+    return `https://www.freecodecamp.org/news/search/?query=${encodeURIComponent(searchTerm)}`;
+  }
+  
+  // Documentation
+  if (title.includes('documentation') || title.includes('docs') || title.includes('mdn')) {
+    const searchTerm = cleanTitle
+      .replace(/documentation:\s*/i, '')
+      .replace(/official\s+documentation/i, '')
+      .replace(/mdn\s*/i, '')
+      .trim();
     
-    // Specific documentation URLs for common technologies
+    // Specific documentation URLs
     const docUrls = {
       'react': 'https://react.dev/learn',
       'vue': 'https://vuejs.org/guide/',
@@ -163,9 +293,12 @@ const generateResourceUrl = (resourceTitle) => {
       'html': 'https://developer.mozilla.org/en-US/docs/Web/HTML',
       'css': 'https://developer.mozilla.org/en-US/docs/Web/CSS',
       'node': 'https://nodejs.org/en/docs/',
-      'express': 'https://expressjs.com/en/guide/routing.html'
+      'express': 'https://expressjs.com/en/guide/routing.html',
+      'typescript': 'https://www.typescriptlang.org/docs/',
+      'python': 'https://docs.python.org/3/'
     };
     
+    // Check if the search term matches any known documentation
     for (const [tech, url] of Object.entries(docUrls)) {
       if (searchTerm.toLowerCase().includes(tech)) {
         return url;
@@ -175,24 +308,52 @@ const generateResourceUrl = (resourceTitle) => {
     return `https://developer.mozilla.org/en-US/search?q=${encodeURIComponent(searchTerm)}`;
   }
   
+  // Tutorial sites - be more specific
   if (title.includes('tutorial') || title.includes('guide')) {
-    const searchTerm = resourceTitle.replace(/tutorial/i, '').replace(/guide/i, '').replace(/practical/i, '').trim();
+    const searchTerm = cleanTitle
+      .replace(/tutorial/i, '')
+      .replace(/guide/i, '')
+      .replace(/practical/i, '')
+      .trim();
+      
+    // If it mentions a specific platform, use that
+    if (title.includes('w3schools')) {
+      return `https://www.w3schools.com/${searchTerm.toLowerCase().replace(/\s+/g, '_')}/default.asp`;
+    }
+    
+    // Default to FreeCodeCamp for tutorials
     return `https://www.freecodecamp.org/news/search/?query=${encodeURIComponent(searchTerm)}`;
   }
   
-  // Default to Google search
-  return `https://www.google.com/search?q=${encodeURIComponent(resourceTitle + ' programming tutorial')}`;
+  // Interactive/Playground resources
+  if (title.includes('interactive') || title.includes('playground')) {
+    const topic = cleanTitle.toLowerCase();
+    if (topic.includes('javascript') || topic.includes('js')) {
+      return 'https://playcode.io/javascript';
+    }
+    if (topic.includes('html') || topic.includes('css')) {
+      return 'https://codepen.io/pen/';
+    }
+    if (topic.includes('sql')) {
+      return 'https://www.db-fiddle.com/';
+    }
+  }
+  
+  // Default to Google search as last resort
+  return `https://www.google.com/search?q=${encodeURIComponent(cleanTitle + ' programming tutorial')}`;
 };
 
 const detectResourceType = (resourceTitle) => {
   const title = resourceTitle.toLowerCase();
   
   if (title.includes('youtube') || title.includes('video') || title.includes('watch')) return 'video';
-  if (title.includes('course') || title.includes('tutorial') || title.includes('learn')) return 'tutorial';
-  if (title.includes('documentation') || title.includes('docs') || title.includes('reference')) return 'documentation';
-  if (title.includes('article') || title.includes('blog') || title.includes('guide')) return 'article';
+  if (title.includes('documentation') || title.includes('docs') || title.includes('reference') || title.includes('mdn')) return 'documentation';
+  if (title.includes('interactive') || title.includes('playground') || title.includes('sandbox')) return 'interactive';
+  if (title.includes('course') || title.includes('coursera') || title.includes('udemy')) return 'course';
+  if (title.includes('tutorial') || title.includes('guide') || title.includes('learn')) return 'tutorial';
+  if (title.includes('article') || title.includes('blog') || title.includes('post')) return 'article';
   
-  return 'article';
+  return 'article'; // default
 };
 
 const estimateTimeFromTitle = (title) => {
@@ -272,6 +433,13 @@ router.post('/generate', async (req, res) => {
       sampleResources: (enhancedRoadmap.modules?.[0]?.resources || enhancedRoadmap.phases?.[0]?.modules?.[0]?.resources)?.length
     });
 
+    if (enhancedRoadmap.modules?.[0]?.resources) {
+        console.log("📚 First module resources detail:", JSON.stringify(enhancedRoadmap.modules[0].resources, null, 2));
+    }
+    if (enhancedRoadmap.modules?.[0]?.tasks) {
+        console.log("📋 First module tasks detail:", JSON.stringify(enhancedRoadmap.modules[0].tasks, null, 2));
+    }
+
     // Prepare the roadmap data for database storage
     const roadmapData = {
       user_id: userId,
@@ -328,6 +496,17 @@ router.post('/generate', async (req, res) => {
     }
 
     console.log("✅ Enhanced roadmap saved successfully");
+    // Verify the save by fetching it back
+    const { data: verifyData, error: verifyError } = await supabaseServiceRole
+      .from('user_learning_paths')
+      .select('path_data')
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .single();
+
+    if (verifyData) {
+      console.log("🔍 Verification - First module from DB:", JSON.stringify(verifyData.path_data.modules?.[0], null, 2));
+    }
 
     // Calculate some stats for the response
     const totalModules = enhancedRoadmap.modules?.length || 
@@ -427,6 +606,173 @@ router.post('/enhance/:userId', async (req, res) => {
     res.status(500).json({ 
       success: false, 
       error: err.message || 'Failed to enhance roadmap'
+    });
+  }
+});
+
+// fetch roadmap data 
+router.get('/user/:userId', async (req, res) => {
+  const { userId } = req.params;
+  
+  try {
+    console.log('📚 Fetching roadmap for user:', userId);
+    
+    // Fetch the roadmap from database
+    const { data: learningPath, error } = await supabaseServiceRole
+      .from('user_learning_paths')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .single();
+
+    if (error || !learningPath) {
+      return res.status(404).json({
+        success: false,
+        error: 'No active roadmap found'
+      });
+    }
+
+    // Transform the path_data to match frontend expectations
+    const pathData = learningPath.path_data;
+    
+    // Handle both flat modules and phased structures
+    let allModules = [];
+    
+    if (pathData.modules) {
+      allModules = pathData.modules;
+    } else if (pathData.phases) {
+      // Flatten phases into modules
+      allModules = pathData.phases.reduce((acc, phase) => {
+        return acc.concat(phase.modules || []);
+      }, []);
+    }
+
+    // Ensure modules have proper IDs and structure
+    const enhancedModules = allModules.map((module, index) => {
+      const moduleId = module.module_id || module.id || `module_${index + 1}`;
+      
+      return {
+        module_id: moduleId,
+        module_name: module.module_name || module.title || module.name || `Module ${index + 1}`,
+        module_description: module.module_description || module.description || generateModuleDescription(module.module_name || module.title),
+        difficulty_level: module.difficulty_level || module.difficulty || 'beginner',
+        estimated_completion_hours: module.estimated_completion_hours || module.estimated_hours || 5,
+        sequence_order: module.sequence_order || index + 1,
+        is_completed: module.is_completed || false,
+        status: module.status || '⏳ Pending',
+        resources: module.resources || generateDefaultResources(module.module_name || module.title),
+        // Keep any other existing properties
+        ...module
+      };
+    });
+
+    // Create the roadmap structure expected by frontend
+    const roadmap = {
+      path_id: learningPath.user_path_id,
+      path_title: pathData.title || pathData.roadmap_title || pathData.path_name || learningPath.path_name,
+      path_description: pathData.description || learningPath.path_description,
+      estimated_duration_weeks: pathData.estimated_duration_weeks || pathData.estimated_completion_weeks || 12,
+      path_modules: enhancedModules.map((module, index) => ({
+        path_id: learningPath.user_path_id,
+        module_id: module.module_id,
+        sequence_order: index + 1,
+        is_completed: module.is_completed || false,
+        completion_date: module.completion_date || null,
+        module: module
+      })),
+      generationMethod: pathData.generationMethod || 'custom',
+      userContext: pathData.userContext
+    };
+
+    res.json({
+      success: true,
+      roadmap
+    });
+    
+  } catch (error) {
+    console.error('Error fetching roadmap:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to fetch roadmap'
+    });
+  }
+});
+
+// update module completion
+router.post('/module/:moduleId/complete', async (req, res) => {
+  const { moduleId } = req.params;
+  const { userId, isCompleted } = req.body;
+  
+  try {
+    console.log('📝 Updating module completion:', { moduleId, userId, isCompleted });
+    
+    // Fetch current roadmap
+    const { data: learningPath, error: fetchError } = await supabaseServiceRole
+      .from('user_learning_paths')
+      .select('path_data')
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .single();
+
+    if (fetchError || !learningPath) {
+      throw new Error('No active roadmap found');
+    }
+
+    const pathData = learningPath.path_data;
+    
+    // Update module status
+    let moduleFound = false;
+    
+    if (pathData.modules) {
+      const moduleIndex = pathData.modules.findIndex(m => 
+        (m.module_id || m.id || `module_${pathData.modules.indexOf(m) + 1}`) === moduleId
+      );
+      if (moduleIndex !== -1) {
+        pathData.modules[moduleIndex].is_completed = isCompleted;
+        pathData.modules[moduleIndex].completion_date = isCompleted ? new Date().toISOString() : null;
+        moduleFound = true;
+      }
+    } else if (pathData.phases) {
+      // Handle phased structure
+      for (const phase of pathData.phases) {
+        const moduleIndex = phase.modules?.findIndex(m => 
+          (m.module_id || m.id) === moduleId
+        ) ?? -1;
+        if (moduleIndex !== -1) {
+          phase.modules[moduleIndex].is_completed = isCompleted;
+          phase.modules[moduleIndex].completion_date = isCompleted ? new Date().toISOString() : null;
+          moduleFound = true;
+          break;
+        }
+      }
+    }
+
+    if (!moduleFound) {
+      throw new Error('Module not found in roadmap');
+    }
+
+    // Save updated path_data
+    const { error: updateError } = await supabaseServiceRole
+      .from('user_learning_paths')
+      .update({
+        path_data: pathData,
+        updated_at: new Date().toISOString()
+      })
+      .eq('user_id', userId)
+      .eq('status', 'active');
+
+    if (updateError) throw updateError;
+
+    res.json({
+      success: true,
+      message: 'Module completion status updated'
+    });
+    
+  } catch (error) {
+    console.error('Error updating module completion:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to update module'
     });
   }
 });

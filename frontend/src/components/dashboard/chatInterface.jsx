@@ -132,6 +132,20 @@ What would you like to work on today?`,
       setChatHistory(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
+      // In handleSendMessage, after getting a successful response with roadmapUpdated = true:
+      if (data.roadmapUpdated) {
+        // Trigger roadmap refresh
+        if (typeof onRoadmapUpdate === 'function') {
+          setTimeout(() => {
+            onRoadmapUpdate();
+          }, 1000); // Small delay to ensure DB is updated
+        }
+        
+        // Or dispatch a custom event
+        window.dispatchEvent(new CustomEvent('roadmapUpdated', { 
+          detail: { type: 'roadmap_updated' } 
+        }));
+      }
     }
   };
 

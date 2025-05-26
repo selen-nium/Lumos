@@ -4,6 +4,11 @@ import { supabase } from '../supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
+import { Calendar } from "@/components/ui/calendar";
+import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
+import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Tooltip } from 'recharts';
+import Layout from '@/components/common/Layout';
 
 const LearningStatsPage = () => {
   const { user } = useAuth();
@@ -17,7 +22,7 @@ const LearningStatsPage = () => {
     longestStreak: 18,
     calendar: Array(31).fill(0).map((_, index) => ({
       day: index + 1,
-      isActive: [1, 2, 3, 4, 5, 8, 9, 10, 11, 12].includes(index + 1)
+      isActive: [1,2,3,4,5,8,9,10,11,12].includes(index+1)
     }))
   });
   const [skillsData, setSkillsData] = useState({
@@ -28,8 +33,57 @@ const LearningStatsPage = () => {
     'Node.js': 65,
     'UI/UI': 60
   });
-  const [activeTab, setActiveTab] = useState('mentors');
-  
+  const [selectedDates, setSelectedDates] = useState([]);
+  const [radarData, setRadarData] = useState([]);
+
+  // Prepare calendar selected dates
+  useEffect(() => {
+    const year = new Date().getFullYear();
+    const month = new Date().getMonth();
+    const selected = stats.calendar
+      .filter(d => d.isActive)
+      .map(d => new Date(year, month, d.day));
+    setSelectedDates(selected);
+  }, [stats.calendar]);
+
+  // Prepare radar chart data
+  useEffect(() => {
+    const data = Object.entries(skillsData).map(([skill, value]) => ({ skill, value }));
+    setRadarData(data);
+  }, [skillsData]);
+
+  // Fetch user profile
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (!user) return;
+      try {
+        setLoading(true);
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+        if (error) throw error;
+        setUserProfile(data);
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchUserData();
+  }, [user]);
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="flex justify-center items-center h-[calc(100vh-120px)]">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-btn-dark"></div>
+        </div>
+      </Layout>
+    );
+  }
+
   // Mock personalized advice
   const personalizedAdvice = [
     {
@@ -48,176 +102,25 @@ const LearningStatsPage = () => {
       advice: 'Try building a small project combining your TypeScript and React skills to solidify your understanding.'
     }
   ];
-  
-  useEffect(() => {
-    const fetchUserData = async () => {
-      if (!user) return;
-      
-      try {
-        setLoading(true);
-        
-        // Fetch user profile from Supabase
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-          
-        if (profileError) throw profileError;
-        setUserProfile(profileData);
-        
-        // In a real implementation, you would fetch actual stats from the database
-        // For now, we're using the mock data initialized above
-        
-      } catch (error) {
-        console.error('Error fetching user data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchUserData();
-  }, [user]);
-  
-  // Function to render the radar chart for skills
-  const renderSkillsRadarChart = () => {
-    const skills = Object.keys(skillsData);
-    const values = Object.values(skillsData);
-    const maxValue = 100; // Maximum possible skill value
-    
-    // Calculate coordinates for each skill point on the hexagon
-    const calculatePoint = (index, value) => {
-      const angle = (Math.PI * 2 * index) / skills.length - Math.PI / 2;
-      const radius = (value / maxValue) * 150; // 150 is the max radius of our chart
-      return {
-        x: 200 + radius * Math.cos(angle), // center x + radius * cos(angle)
-        y: 200 + radius * Math.sin(angle)  // center y + radius * sin(angle)
-      };
-    };
-    
-    // Create points for the polygon
-    const points = skills.map((_, index) => 
-      calculatePoint(index, values[index])
-    );
-    
-    // Create SVG polygon points string
-    const polygonPoints = points.map(p => `${p.x},${p.y}`).join(' ');
-    
-    return (
-      <svg width="400" height="400" viewBox="0 0 400 400">
-        {/* Background grid hexagon */}
-        {[0.2, 0.4, 0.6, 0.8, 1].map((scale, i) => (
-          <polygon 
-            key={i}
-            points={skills.map((_, index) => {
-              const point = calculatePoint(index, maxValue * scale);
-              return `${point.x},${point.y}`;
-            }).join(' ')}
-            fill="none"
-            stroke="#E5E5E5"
-            strokeWidth="1"
-          />
-        ))}
-        
-        {/* Skill labels */}
-        {skills.map((skill, index) => {
-          const point = calculatePoint(index, maxValue * 1.2);
-          return (
-            <text 
-              key={skill}
-              x={point.x} 
-              y={point.y}
-              textAnchor="middle"
-              dominantBaseline="middle"
-              fontSize="14"
-              fill="#776B5D"
-            >
-              {skill}
-            </text>
-          );
-        })}
-        
-        {/* Skills data polygon */}
-        <polygon
-          points={polygonPoints}
-          fill="rgba(119, 107, 93, 0.4)"
-          stroke="#776B5D"
-          strokeWidth="2"
-        />
-        
-        {/* Center point */}
-        <circle cx="200" cy="200" r="2" fill="#776B5D" />
-      </svg>
-    );
-  };
-  
-  // Function to render the calendar
-  const renderCalendar = () => {
-    // Group calendar days into rows of 7
-    const calendarRows = [];
-    for (let i = 0; i < stats.calendar.length; i += 7) {
-      calendarRows.push(stats.calendar.slice(i, i + 7));
-    }
-    
-    return (
-      <div className="grid grid-cols-7 gap-2">
-        {/* Day labels */}
-        {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => (
-          <div key={`day-${i}`} className="text-center text-xs text-gray-500">{day}</div>
-        ))}
-        
-        {/* Calendar cells */}
-        {stats.calendar.map((day, index) => (
-          <div 
-            key={`day-${day.day}`}
-            className={`w-8 h-8 flex items-center justify-center rounded-full text-sm font-medium ${
-              day.isActive 
-                ? 'bg-btn-dark text-white' 
-                : index + 1 === stats.currentStreak
-                  ? 'bg-primary text-text'
-                  : 'bg-gray-100 text-gray-400'
-            }`}
-          >
-            {day.day}
-          </div>
-        ))}
-      </div>
-    );
-  };
-  
-  if (loading) {
-    return (
-      <Layout>
-        <div className="flex justify-center items-center h-[calc(100vh-120px)]">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-btn-dark"></div>
-        </div>
-      </Layout>
-    );
-  }
-  
+
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-4xl font-bold mb-8 text-text">Learning Statistics</h1>
-        
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
-          {/* Progress Overview Card */}
+          {/* Progress Overview */}
           <div className="bg-white rounded-lg shadow-sm p-6">
             <h2 className="text-xl font-bold mb-4 text-text">Progress Overview</h2>
-            
+
             <div className="mb-6">
               <h3 className="text-sm text-gray-600 mb-1">Modules Completed</h3>
               <div className="flex items-center">
-                <div className="flex-1 bg-gray-200 rounded-full h-2.5 mr-2">
-                  <div 
-                    className="bg-btn-dark rounded-full h-2.5"
-                    style={{ width: `${stats.modulesCompleted}%` }}
-                  ></div>
-                </div>
+                <Progress value={stats.modulesCompleted} max={100} className="flex-1 mr-2" />
                 <span className="text-gray-600 font-medium">{stats.modulesCompleted}%</span>
               </div>
             </div>
-            
+
             <div className="flex items-center mb-4">
               <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center mr-2">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -227,7 +130,7 @@ const LearningStatsPage = () => {
               <span className="text-gray-600">Hours Spent Learning:</span>
               <span className="ml-auto font-bold text-text">{stats.hoursSpent}</span>
             </div>
-            
+
             <div className="flex items-center">
               <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center mr-2">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -238,11 +141,11 @@ const LearningStatsPage = () => {
               <span className="ml-auto font-bold text-text">{stats.totalPoints}</span>
             </div>
           </div>
-          
-          {/* Learning Streak Card */}
+
+          {/* Learning Streak */}
           <div className="bg-white rounded-lg shadow-sm p-6">
             <h2 className="text-xl font-bold mb-4 text-text">Learning Streak</h2>
-            
+
             <div className="flex items-center mb-4">
               <div className="w-8 h-8 rounded-full bg-btn-dark flex items-center justify-center mr-3">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" viewBox="0 0 20 20" fill="currentColor">
@@ -257,32 +160,57 @@ const LearningStatsPage = () => {
                 <p className="text-xs text-gray-500">Longest: {stats.longestStreak} days</p>
               </div>
             </div>
-            
-            {renderCalendar()}
-            
+
+            <div className="w-full flex justify-center">
+              <Calendar
+                mode="multiple"
+                selected={selectedDates}
+                onSelect={() => {}}
+                className="rounded-md border"
+              />
+            </div>
+
             <div className="mt-6">
               <h3 className="text-sm font-medium mb-2 text-gray-600">Available Rewards</h3>
               <div className="flex space-x-2">
-                <span className="px-3 py-1 bg-primary text-text text-xs font-medium rounded-full">Custom Theme</span>
-                <span className="px-3 py-1 bg-primary text-text text-xs font-medium rounded-full">Pro Courses</span>
-                <span className="px-3 py-1 bg-primary text-text text-xs font-medium rounded-full">Lumos Badge</span>
+                <span className="px-3 py-1 bg-primary text-white text-xs font-medium rounded-full">Custom Theme</span>
+                <span className="px-3 py-1 bg-primary text-white text-xs font-medium rounded-full">Pro Courses</span>
+                <span className="px-3 py-1 bg-primary text-white text-xs font-medium rounded-full">Lumos Badge</span>
               </div>
             </div>
           </div>
-          
-          {/* Skills Development Card */}
+
+          {/* Skills Development */}
           <div className="bg-white rounded-lg shadow-sm p-6">
             <h2 className="text-xl font-bold mb-4 text-text">Skills Development</h2>
             <div className="flex justify-center">
-              {renderSkillsRadarChart()}
+              <ChartContainer
+                config={{
+                  JavaScript: { label: 'JavaScript', color: '#776B5D' },
+                  TypeScript: { label: 'TypeScript', color: '#776B5D' },
+                  React: { label: 'React', color: '#776B5D' },
+                  CSS: { label: 'CSS', color: '#776B5D' },
+                  'Node.js': { label: 'Node.js', color: '#776B5D' },
+                  'UI/UI': { label: 'UI/UI', color: '#776B5D' }
+                }}
+                className="min-h-[300px] w-full"
+              >
+                <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="80%">
+                  <PolarGrid />
+                  <PolarAngleAxis dataKey="skill" stroke="#776B5D" tick={{ fill: '#776B5D', fontSize: 14 }} />
+                  <PolarRadiusAxis />
+                  <Radar dataKey="value" fill="rgba(119, 107, 93, 0.4)" stroke="#776B5D" />
+                  <Tooltip content={<ChartTooltipContent />} />
+                </RadarChart>
+              </ChartContainer>
             </div>
           </div>
         </div>
-        
-        {/* Personalised Advice Section */}
+
+        {/* Personalised Advice */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
           <h2 className="text-xl font-bold mb-6 text-text">Personalised Advice</h2>
-          
+
           <div className="space-y-6">
             {personalizedAdvice.map(item => (
               <div key={item.id} className="flex">
@@ -300,9 +228,8 @@ const LearningStatsPage = () => {
               </div>
             ))}
           </div>
-          
+
           <div className="mt-8 text-right">
-            {/* //to be implemented */}
             <Link to="/detailed-report" className="text-btn-dark hover:underline inline-flex items-center">
               View detailed learning report
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" viewBox="0 0 20 20" fill="currentColor">

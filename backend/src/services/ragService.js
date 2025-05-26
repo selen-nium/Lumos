@@ -16,6 +16,28 @@ class RAGService {
         this.defaultSystemPrompt = this.getDefaultSystemPrompt();
     }
 
+    removeRedundantModules(roadmap, knownSkills = []) {
+        const knownSkillNames = knownSkills.map(s => s.name.toLowerCase());
+
+        const isRedundant = (module) =>
+            module.skills_covered?.some(skill =>
+                knownSkillNames.includes(skill.toLowerCase())
+            );
+
+        if (roadmap.modules) {
+            roadmap.modules = roadmap.modules.filter(m => !isRedundant(m));
+        }
+
+        if (roadmap.phases) {
+            roadmap.phases = roadmap.phases.map(phase => ({
+                ...phase,
+                modules: (phase.modules || []).filter(m => !isRedundant(m))
+            }));
+        }
+
+        return roadmap;
+    }
+
     /**
      * Process user query through the RAG system
      */
@@ -158,14 +180,17 @@ class RAGService {
 
             // If no template paths found, use LLM to generate a custom roadmap
             if (!templatePaths.length) {
-                return await this.generateCustomRoadmap(userContext, options);
+                let roadmap = await this.generateCustomRoadmap(userContext, options);
+                roadmap = this.removeRedundantModules(roadmap, userContext.skills);
+                // return await this.generateCustomRoadmap(userContext, options);
             }
 
             // Use the most relevant template path as base
             const basePath = templatePaths[0];
             
             // Customize template path with LLM
-            const customizedRoadmap = await this.customizeTemplatePath(basePath, userContext, options);
+            let customizedRoadmap = await this.customizeTemplatePath(basePath, userContext, options);
+            customizedRoadmap = this.removeRedundantModules(customizedRoadmap, userContext.skills);
             
             return customizedRoadmap;
         } catch (error) {
@@ -605,51 +630,65 @@ class RAGService {
         2. Each module should include a title, description, and estimated completion time
         3. Prerequisites for each module
         4. Recommended resources for each module (videos, articles, documentation)
-        5. Hands-on projects or tasks to apply what they've learned
+        5. Hands-on projects or tasks to apply what they've learned for each module
+
+        When generating resources for each module, create specific, accurate resource titles:
+        - For video resources: "YouTube: [Topic] Tutorial by [Channel]" or just "YouTube: [Topic] Tutorial"
+        - For documentation: "MDN: [Topic] Documentation" or "[Technology] Official Docs: [Topic]"
+        - For courses: "Coursera: [Topic] Course" or "Udemy: [Topic] Complete Course"
+        - For tutorials: "FreeCodeCamp: [Topic] Tutorial" or "W3Schools: [Topic] Guide"
+        - For interactive: "CodePen: [Topic] Playground" or "Interactive [Topic] Exercises"
+        Be specific about the platform in the title to ensure proper URL generation.
         
         Focus on creating a realistic timeline based on the user's available learning time.
-        Consider the user's current skill level and create appropriate progression.
+        Consider the user's current skills and create appropriate progression. Exclude or skip topics the user is already proficient in. For example, if a user already knows HTML and CSS, do not include beginner modules for those skills.
         The roadmap should be challenging but achievable to maintain motivation.
         Include checkpoints and milestones to measure progress.
         
         Format your response as a JSON object with the following structure:
         {
-          "roadmap_title": "Title based on user goals",
-          "estimated_completion_weeks": number,
-          "phases": [
+        "roadmap_title": "Title based on user goals",
+        "estimated_completion_weeks": number,
+        "phases": [
             {
-              "phase_id": 1,
-              "phase_title": "Phase title",
-              "phase_description": "Phase description",
-              "modules": [
+            "phase_id": 1,
+            "phase_title": "Phase title",
+            "phase_description": "Phase description",
+            "modules": [
                 {
-                  "module_id": "unique_id",
-                  "module_name": "Module name",
-                  "module_description": "Module description",
-                  "estimated_hours": number,
-                  "difficulty": number (1-5),
-                  "prerequisites": ["prerequisite_module_id1", "prerequisite_module_id2"],
-                  "resources": [
+                "module_id": "unique_id",
+                "module_name": "Module name",
+                "module_description": "Module description",
+                "estimated_hours": number,
+                "difficulty": number (1-5),
+                "prerequisites": ["prerequisite_module_id1"],
+                "resources": [
                     {
-                      "title": "Resource title",
-                      "type": "video|article|documentation|interactive",
-                      "url": "resource_url",
-                      "estimated_time_minutes": number
+                    "resource_title": "Specific resource title (e.g., 'MDN: JavaScript Arrays Documentation')",
+                    "resource_type": "video|article|documentation|tutorial|interactive",
+                    "url": "actual URL or descriptive placeholder",
+                    "estimated_time_minutes": number
                     }
-                  ],
-                  "tasks": [
+                ],
+                "tasks": [
                     {
-                      "title": "Task title",
-                      "description": "Task description",
-                      "estimated_time_minutes": number,
-                      "task_type": "coding|quiz|project"
+                    "task_title": "Specific task title",
+                    "task_description": "Detailed task description",
+                    "estimated_time_minutes": number,
+                    "task_type": "practice|project|quiz"
                     }
-                  ]
+                ]
                 }
-              ]
+            ]
             }
-          ]
-        }`;
+        ]
+        }
+        
+        IMPORTANT: 
+        - Generate 3-5 specific, real resources for each module
+        - Generate 2-3 hands-on tasks for each module
+        - Use actual resource titles that would exist (e.g., "FreeCodeCamp: React Hooks Tutorial")
+        - Tasks should be specific and actionable (e.g., "Build a Todo List with React useState")`;
     }
 
     /**
@@ -669,7 +708,7 @@ class RAGService {
         6. Make sure the progression is logical and builds upon prerequisites appropriately
         
         The customized roadmap should maintain the overall structure of the template but be tailored to the individual.
-        
+
         Format your response as a JSON object with the same structure as the template provided.`;
     }
 

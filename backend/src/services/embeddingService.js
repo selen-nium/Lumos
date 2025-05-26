@@ -54,6 +54,7 @@ class EmbeddingService {
                     ${limit}
                 )
             `;
+            console.log("🔍 Retrieved module results:", results);
 
             return results;
         } catch (error) {
@@ -78,7 +79,7 @@ class EmbeddingService {
             const queryEmbedding = await this.textToEmbedding(queryText);
             const embeddingStr = '[' + queryEmbedding.join(',') + ']';
 
-            const results = await sql`
+             const results = await sql`
                 SELECT * FROM find_similar_resources(
                     ${embeddingStr}::vector,
                     ${preferredTypes},
@@ -89,6 +90,12 @@ class EmbeddingService {
                 )
             `;
 
+            console.log("🔍 Raw SQL results:", JSON.stringify(results, null, 2));
+            console.log("🔍 Result count:", results.length);
+            if (results.length > 0) {
+                console.log("🔍 First result structure:", Object.keys(results[0]));
+            }
+            
             return results;
         } catch (error) {
             console.error('Error finding similar resources:', error);
@@ -123,6 +130,7 @@ class EmbeddingService {
                 )
             `;
 
+            console.log("🔍 Retrieved tasks results:", results);
             return results;
         } catch (error) {
             console.error('Error finding similar tasks:', error);

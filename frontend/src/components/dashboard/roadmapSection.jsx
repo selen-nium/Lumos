@@ -11,7 +11,8 @@ import {
   Clock, 
   BookOpen, 
   Target,
-  ChevronRight
+  ChevronRight,
+  Code
 } from 'lucide-react';
 
 const RoadmapSection = ({ loading, roadmapProgress, modules }) => {
@@ -153,9 +154,18 @@ const RoadmapSection = ({ loading, roadmapProgress, modules }) => {
                         </div>
                       </div>
                     )}
+                    {/* Tasks Count */}
+                    {module.tasks && module.tasks.length > 0 && (
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground mb-4">
+                        <div className="flex items-center gap-1">
+                          <Code className="h-3 w-3" />
+                          <span>{module.tasks.length} hands-on tasks</span>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Action Button */}
-                    <Link to={`/module/${module.module_id || module.id}`}>
+                    <Link to={`/module/${module.module_id}`}>
                       <Button 
                         variant={module.isCompleted ? "outline" : "default"}
                         className="w-full group"
