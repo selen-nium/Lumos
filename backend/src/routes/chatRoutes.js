@@ -60,7 +60,7 @@ router.post('/message', async (req, res) => {
 
     // Regular chat processing
     const responseType = detectResponseType(message);
-    const options = {
+    const commonOptions = {
       responseType,
       chatHistory: chatHistory || [],
       roadmapContext: context.roadmap,
@@ -69,11 +69,36 @@ router.post('/message', async (req, res) => {
       maxTokens: 800
     };
 
-    const chatResponse = await chatService.processUserMessage(
-      context.user.id, 
-      message, 
-      options
-    );
+    // const chatResponse = await chatService.processUserMessage(
+    //   context.user.id, 
+    //   message, 
+    //   options
+    // );
+
+    let chatResponse;
+    if (responseType !== 'chat') {
+      chatResponse = await chatService.processUserMessage(
+        context.user.id, 
+        message, 
+        { ...commonOptions, responseType }
+      );
+    } else {
+      chatResponse = await chatService.processGeneralMessage(
+        context.user.id,
+        message
+      );
+    }
+
+    res.json({
+      success: true,
+      response: chatResponse.response,
+      suggestions: [],
+      context: {
+        messageProcessed: chatResponse.message,
+        timestamp: chatResponse.timestamp
+      }
+    });
+
 
     const suggestions = await generateSuggestions(message, context);
 

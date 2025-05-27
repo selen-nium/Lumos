@@ -394,6 +394,43 @@ class ChatService {
     }
 
     /**
+     * Fallback: Process any general user message with open-ended AI
+     */
+    async processGeneralMessage(userId, message) {
+    try {
+        const completion = await ragService.openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+            {
+            role: 'system',
+            content: 'You are a helpful and knowledgeable assistant who can answer any kind of question, from technical help to general advice.'
+            },
+            {
+            role: 'user',
+            content: message
+            }
+        ],
+        temperature: 0.7,
+        max_tokens: 800
+        });
+
+        return {
+        message,
+        response: completion.choices[0].message.content,
+        timestamp: new Date().toISOString()
+        };
+    } catch (error) {
+        console.error('Error in general fallback chat:', error);
+        return {
+        message,
+        response: "I'm having trouble answering that right now. Could you try rephrasing?",
+        timestamp: new Date().toISOString()
+        };
+    }
+    }
+
+
+    /**
      * Validate roadmap modification requests
      */
     validateModificationRequest(message, editType) {
