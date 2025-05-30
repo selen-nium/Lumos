@@ -32,15 +32,9 @@ const HomePage = () => {
 
       console.log("📥 Roadmap fetch result:", { data: roadmapData, error });
 
-      if (error) {
-        console.error("Database error:", error);
-        navigate('/onboarding');
-        return;
-      }
-
-      if (!roadmapData?.path_data) {
-        console.log("No roadmap data found, redirecting to onboarding");
-        navigate('/onboarding');
+      if (error || !roadmapData?.path_data) {
+        console.warn("No roadmap yet, retrying...");
+        setTimeout(fetchRoadmapFromDB, 1000);  // retry once after 1 sec
         return;
       }
 

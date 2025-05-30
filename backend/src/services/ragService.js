@@ -641,7 +641,6 @@ class RAGService {
         Be specific about the platform in the title to ensure proper URL generation.
         
         Focus on creating a realistic timeline based on the user's available learning time.
-        Consider the user's current skills and create appropriate progression. Exclude or skip topics the user is already proficient in. For example, if a user already knows HTML and CSS, do not include beginner modules for those skills.
         The roadmap should be challenging but achievable to maintain motivation.
         Include checkpoints and milestones to measure progress.
         
@@ -688,7 +687,9 @@ class RAGService {
         - Generate 3-5 specific, real resources for each module
         - Generate 2-3 hands-on tasks for each module
         - Use actual resource titles that would exist (e.g., "FreeCodeCamp: React Hooks Tutorial")
-        - Tasks should be specific and actionable (e.g., "Build a Todo List with React useState")`;
+        - Tasks should be specific and actionable (e.g., "Build a Todo List with React useState")
+        - Consider the user's current skills and create appropriate progression. Exclude or skip topics the user already know. For example, if a user already knows HTML and CSS, do not include beginner modules for those skills.
+        `;
     }
 
     /**

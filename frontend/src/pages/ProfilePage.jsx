@@ -145,6 +145,13 @@ const ProfilePage = () => {
   const handleSignOut = async () => {
     try {
       setLoading(true);
+      // const { data: { session } } = await supabase.auth.getSession();
+      // if (!session) {
+      //   console.warn('No active session found. Skipping sign out.');
+      //   return;
+      // }
+      // await supabase.auth.signOut();
+
       const { error } = await supabase.auth.signOut();
       
       if (error) throw error;
@@ -154,6 +161,7 @@ const ProfilePage = () => {
       console.error('Error signing out:', error);
       setError('Failed to sign out');
       setLoading(false);
+      
     }
   };
   

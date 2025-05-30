@@ -1,11 +1,11 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
-
 dotenv.config();
 
 import roadmapRoutes from './routes/roadmapRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
+import authRoutes from './routes/authRoutes.js';
 
 const PORT = process.env.PORT || 5001;
 
@@ -18,6 +18,7 @@ app.use(cors({
 app.use(express.json());
 app.use('/api/roadmap', roadmapRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/auth', authRoutes);
 
 app.get('/', (req, res) => {
   res.send('Lumos backend');
