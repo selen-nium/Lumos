@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
+import ReactMarkdown from 'react-markdown'; // NEW: import ReactMarkdown
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+// import { Badge } from '@/components/ui/badge';
 import { 
   Send, 
   Bot, 
@@ -214,15 +215,15 @@ What would you like to work on today?`,
           </div>
           
           {/* Message bubble */}
-          <div className={`rounded-lg px-4 py-3 ${
+          <div className={`relative rounded-lg px-4 py-3 shadow-sm ${
             isUser 
               ? 'bg-blue-600 text-white' 
               : isError 
                 ? 'bg-red-50 text-red-800 border border-red-200'
                 : 'bg-muted text-muted-foreground'
           }`}>
-            <div className="whitespace-pre-wrap text-sm leading-relaxed">
-              {msg.content}
+            <div className="prose prose-sm break-words">
+              {msg.content && <ReactMarkdown>{msg.content}</ReactMarkdown>}
             </div>
             
             {msg.timestamp && (
@@ -290,16 +291,16 @@ What would you like to work on today?`,
       label: "Study schedule", 
       message: "Help me create a study schedule for this week"
     },
-    {
-      icon: <TrendingUp className="h-4 w-4" />,
-      label: "Increase difficulty",
-      message: "Make my roadmap more challenging"
-    },
-    {
-      icon: <Settings className="h-4 w-4" />,
-      label: "Modify pace",
-      message: "Adjust the pace of my learning plan"
-    },
+    // {
+    //   icon: <TrendingUp className="h-4 w-4" />,
+    //   label: "Increase difficulty",
+    //   message: "Make my roadmap more challenging"
+    // },
+    // {
+    //   icon: <Settings className="h-4 w-4" />,
+    //   label: "Modify pace",
+    //   message: "Adjust the pace of my learning plan"
+    // },
     {
       icon: <Zap className="h-4 w-4" />,
       label: "Add modules",
@@ -343,7 +344,7 @@ What would you like to work on today?`,
                 key={idx}
                 variant="outline"
                 size="sm"
-                className="h-auto p-3 flex flex-col items-center gap-2 text-xs"
+                className="h-auto p-3 flex flex-col items-center gap-2 text-xs transition-colors hover:bg-muted/50"
                 onClick={() => {
                   setChatMessage(action.message);
                 }}
@@ -355,7 +356,7 @@ What would you like to work on today?`,
           </div>
           
           {/* Modification Examples */}
-          <div className="mt-4">
+          {/* <div className="mt-4">
             <div className="text-xs text-muted-foreground mb-2">Try these roadmap modifications:</div>
             <div className="space-y-1">
               {modificationExamples.slice(0, 3).map((example, idx) => (
@@ -368,7 +369,7 @@ What would you like to work on today?`,
                 </button>
               ))}
             </div>
-          </div>
+          </div> */}
         </div>
       )}
 
@@ -376,17 +377,18 @@ What would you like to work on today?`,
       <div className="flex-1 p-4 overflow-y-auto">
         {chatHistory.map(renderMessage)}
         
-        {/* Loading indicator */}
+        {/* Loading indicator moved inside assistant bubble */}
         {isLoading && (
           <div className="flex justify-start mb-4">
-            <div className="flex items-start gap-3">
+            <div className="flex items-start gap-3 max-w-[80%]">
+              {/* Keep a static Bot avatar */}
               <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                <Loader2 className="h-4 w-4 text-muted-foreground animate-spin" />
+                <Bot className="h-4 w-4 text-muted-foreground" />
               </div>
-              <div className="bg-muted rounded-lg px-4 py-3">
-                <div className="text-sm text-muted-foreground">
-                  {isModifying ? 'Modifying your roadmap...' : 'Thinking...'}
-                </div>
+              {/* Spinner inside a bubble */}
+              <div className="rounded-lg px-4 py-3 bg-muted text-muted-foreground shadow-sm flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="text-sm">{isModifying ? 'Modifying your roadmap...' : 'Thinking...'}</span>
               </div>
             </div>
           </div>

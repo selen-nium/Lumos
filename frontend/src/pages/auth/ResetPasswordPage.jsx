@@ -6,9 +6,9 @@ import { supabase } from '../../supabaseClient';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { CheckCircle } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { CheckCircle, AlertCircle } from "lucide-react";
 import Logo from '../../components/common/Logo';
 
 const ResetPasswordPage = () => {
@@ -127,20 +127,30 @@ const ResetPasswordPage = () => {
                   Reset Password
                 </CardTitle>
                 <CardDescription className="text-center">
-                  {email ? `Set a new password for ${email}` : 'Enter your new password'}
+                  {email
+                    ? `Set a new password for ${email}`
+                    : 'Enter your new password'}
                 </CardDescription>
               </CardHeader>
               
               <CardContent className="space-y-4">
                 {error ? (
                   <div className="space-y-4">
-                    <Alert variant="destructive">
-                      <AlertDescription>{error}</AlertDescription>
+                    <Alert className="border-red-600 bg-red-50">
+                      <div className="flex items-center space-x-2">
+                        <AlertCircle className="w-5 h-5 text-red-600" />
+                        <AlertTitle className="text-red-600 font-medium">
+                          Reset Error
+                        </AlertTitle>
+                      </div>
+                      <AlertDescription className="text-red-600 font-medium">
+                        {error}
+                      </AlertDescription>
                     </Alert>
                     <Button
                       type="button"
                       variant="outline"
-                      className="w-full"
+                      className="w-full border-red-600 text-red-600 hover:bg-red-50"
                       onClick={() => navigate('/forgot-password')}
                     >
                       Request New Reset Link
@@ -158,10 +168,16 @@ const ResetPasswordPage = () => {
                         value={formik.values.password}
                         onChange={formik.handleChange}
                         onBlur={formik.handleBlur}
-                        className={formik.touched.password && formik.errors.password ? 'border-destructive' : ''}
+                        className={
+                          formik.touched.password && formik.errors.password
+                            ? 'border-red-600 focus:border-red-600'
+                            : ''
+                        }
                       />
                       {formik.touched.password && formik.errors.password && (
-                        <p className="text-sm text-destructive">{formik.errors.password}</p>
+                        <p className="text-sm text-red-600 font-medium">
+                          {formik.errors.password}
+                        </p>
                       )}
                     </div>
                     
@@ -175,10 +191,16 @@ const ResetPasswordPage = () => {
                         value={formik.values.confirmPassword}
                         onChange={formik.handleChange}
                         onBlur={formik.handleBlur}
-                        className={formik.touched.confirmPassword && formik.errors.confirmPassword ? 'border-destructive' : ''}
+                        className={
+                          formik.touched.confirmPassword && formik.errors.confirmPassword
+                            ? 'border-red-600 focus:border-red-600'
+                            : ''
+                        }
                       />
                       {formik.touched.confirmPassword && formik.errors.confirmPassword && (
-                        <p className="text-sm text-destructive">{formik.errors.confirmPassword}</p>
+                        <p className="text-sm text-red-600 font-medium">
+                          {formik.errors.confirmPassword}
+                        </p>
                       )}
                     </div>
                     

@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
-import { Calendar } from "@/components/ui/calendar";
+// import { Calendar } from "@/components/ui/calendar";
 import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
 import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Tooltip } from 'recharts';
 import Layout from '@/components/common/Layout';
@@ -161,14 +161,14 @@ const LearningStatsPage = () => {
               </div>
             </div>
 
-            <div className="w-full flex justify-center">
+            {/* <div className="w-full flex justify-center">
               <Calendar
                 mode="multiple"
                 selected={selectedDates}
                 onSelect={() => {}}
                 className="rounded-md border"
               />
-            </div>
+            </div> */}
 
             <div className="mt-6">
               <h3 className="text-sm font-medium mb-2 text-gray-600">Available Rewards</h3>

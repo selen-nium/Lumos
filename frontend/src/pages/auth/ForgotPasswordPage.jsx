@@ -81,16 +81,16 @@ const ForgotPasswordPage = () => {
                       value={formik.values.email}
                       onChange={formik.handleChange}
                       onBlur={formik.handleBlur}
-                      className={formik.touched.email && formik.errors.email ? 'border-destructive' : ''}
+                      className={formik.touched.email && formik.errors.email ? 'border-red-600' : ''}
                     />
                     {formik.touched.email && formik.errors.email && (
-                      <p className="text-sm text-destructive">{formik.errors.email}</p>
+                      <p className="text-sm text-red-600 font-semibold">{formik.errors.email}</p>
                     )}
                   </div>
 
                   {error && (
-                    <Alert variant="destructive">
-                      <AlertDescription>{error}</AlertDescription>
+                    <Alert variant="destructive" className="border-red-700 bg-red-50">
+                      <AlertDescription className="text-red-700 font-medium">{error}</AlertDescription>
                     </Alert>
                   )}
                   

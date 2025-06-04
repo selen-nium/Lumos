@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
+import TasksSection from '@/components/dashboard/taskSection';
 import Layout from '../components/common/Layout';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -228,11 +229,53 @@ const ModulePage = () => {
               task_description,
               task_type,
               estimated_time_minutes,
-              instructions
+              instructions,
+              solution_url
+            ),
+            user_task_progress!left (
+              is_completed,
+              completion_date
             )
           `)
           .eq('module_id', moduleId)
+          .eq('user_task_progress.user_id', user.id)
           .order('sequence_order');
+        
+        // process task data
+        // Get task progress for the current user
+        const taskIds = tasksData?.map(t => t.hands_on_tasks.task_id) || [];
+        let taskProgress = [];
+
+        if (taskIds.length > 0) {
+          const { data: progressData } = await supabase
+            .from('user_task_progress')
+            .select('task_id, is_completed, completion_date')
+            .eq('user_id', user.id)
+            .in('task_id', taskIds);
+          
+          taskProgress = progressData || [];
+        }
+
+        // Create a progress map for quick lookup
+        const progressMap = new Map();
+        taskProgress.forEach(progress => {
+          progressMap.set(progress.task_id, progress);
+        });
+
+        // ALSO UPDATE THE TASKS PROCESSING CODE:
+        // Find where you process the tasks (around line 180):
+        const processedTasks = (tasksData || []).map(t => {
+          const progress = progressMap.get(t.hands_on_tasks.task_id);
+          return {
+            ...t.hands_on_tasks,
+            sequence_order: t.sequence_order,
+            is_required: t.is_required,
+            is_completed: progress?.is_completed || false,
+            completion_date: progress?.completion_date || null
+          };
+        });
+
+        setTasks(processedTasks);
 
         // Process the module data
         const processedModule = {
@@ -325,6 +368,53 @@ const ModulePage = () => {
     } catch (error) {
       console.error('Error completing module:', error);
       alert(`Failed to complete module: ${error.message}`);
+    }
+  };
+
+  const handleTaskCompletion = async (taskId, isCompleted) => {
+    try {
+      console.log('🔄 Updating task completion:', { taskId, isCompleted });
+
+      // Get the user's learning path ID
+      const { data: pathData, error: pathError } = await supabase
+        .from('user_learning_paths')
+        .select('user_path_id')
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+        .single();
+
+      if (pathError) {
+        console.error('Error fetching learning path:', pathError);
+        throw new Error('Could not find your learning path');
+      }
+
+      // Update task completion in user_task_progress table
+      const { data: updateData, error: updateError } = await supabase
+        .from('user_task_progress')
+        .upsert({
+          user_id: user.id,
+          user_path_id: pathData.user_path_id,
+          task_id: taskId,
+          is_completed: isCompleted,
+          completion_date: isCompleted ? new Date().toISOString() : null,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id,task_id'
+        })
+        .select();
+
+      if (updateError) {
+        console.error('Error updating task completion:', updateError);
+        throw new Error('Failed to update task completion');
+      }
+
+      console.log('✅ Task completion updated successfully');
+      
+      // toast notif to be added
+
+    } catch (error) {
+      console.error('❌ Error updating task completion:', error);
+      throw error;
     }
   };
 
@@ -716,54 +806,10 @@ const ModulePage = () => {
 
           {/* Tasks Tab */}
           {activeTab === 'tasks' && (
-            <div className="space-y-6">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h2 className="text-xl font-semibold">Hands-on Tasks</h2>
-                  <p className="text-muted-foreground">
-                    {tasks.length} practical tasks to apply your skills
-                  </p>
-                </div>
-              </div>
-
-              {tasks.length > 0 ? (
-                <div className="grid gap-4">
-                  {tasks.map((task, index) => (
-                    <Card key={index} className="hover:shadow-md transition-shadow">
-                      <CardContent className="p-6">
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between gap-4 mb-1">
-                            <h3 className="font-medium text-lg leading-tight">
-                              {task.task_title}
-                            </h3>
-                            <Badge variant="outline" className="capitalize">
-                              {task.task_type}
-                            </Badge>
-                          </div>
-
-                          <p className="text-sm text-muted-foreground">
-                            {task.task_description}
-                          </p>
-
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <Clock className="h-3 w-3" />
-                            <span>{task.estimated_time_minutes} minutes</span>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              ) : (
-                <Card className="p-8 text-center">
-                  <Code className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-medium mb-2">No tasks available</h3>
-                  <p className="text-muted-foreground">
-                    Tasks for this module will be added soon.
-                  </p>
-                </Card>
-              )}
-            </div>
+            <TasksSection 
+              tasks={tasks} 
+              onTaskCompletion={handleTaskCompletion}
+            />
           )}
         </div>
       </div>
