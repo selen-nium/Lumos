@@ -10,7 +10,7 @@ class LLMService {
     
     // Default parameters
     this.defaultChatParams = {
-      temperature: 0.3,
+      temperature: 0.1,
       max_tokens: 800,
       top_p: 1,
       frequency_penalty: 0,
@@ -70,14 +70,85 @@ class LLMService {
   }
 
   /**
-   * Generate structured JSON output - for roadmap generation, etc.
+   * Generate structured JSON output with schema validation
    */
+  async generateStructuredOutputWithSchema(messages, schema, options = {}) {
+    try {
+      // Validate schema structure
+      if (!schema || typeof schema !== 'object') {
+        throw new Error('Schema must be a valid JSON Schema object');
+      }
+
+      const schemaName = options.schemaName || schema.name || 'structured_response';
+      const schemaDescription = options.schemaDescription || schema.description || 'Structured response following the provided schema';
+
+      const structuredOptions = {
+        model: options.model || this.defaultChatModel,
+        messages: this.formatMessages(messages),
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: schemaName,
+            description: schemaDescription,
+            schema: schema,
+            strict: true
+          }
+        },
+        temperature: options.temperature || 0.2,
+        max_tokens: options.max_tokens || 4000,
+        top_p: options.top_p || 1,
+        frequency_penalty: options.frequency_penalty || 0,
+        presence_penalty: options.presence_penalty || 0
+      };
+
+      console.log(`🤖 Calling OpenAI API with JSON schema: ${schemaName}`);
+      console.log(`📊 Schema validation: ${schema.required?.length || 0} required fields`);
+      
+      const openai = this.getOpenAIClient();
+      const completion = await openai.chat.completions.create(structuredOptions);
+      
+      console.log(`✅ OpenAI structured API call successful - ${completion.usage?.total_tokens || 'unknown'} tokens used`);
+      console.log(`🏁 Finish reason: ${completion.choices[0].finish_reason}`);
+      
+      // Parse and validate the response
+      try {
+        const parsedContent = JSON.parse(completion.choices[0].message.content);
+        
+        // Basic validation - check if required fields are present
+        if (schema.required && Array.isArray(schema.required)) {
+          for (const field of schema.required) {
+            if (!(field in parsedContent)) {
+              console.warn(`⚠️ Missing required field: ${field}`);
+            }
+          }
+        }
+        
+        return {
+          content: completion.choices[0].message.content,
+          parsed: parsedContent,
+          usage: completion.usage,
+          model: completion.model,
+          finishReason: completion.choices[0].finish_reason,
+          schemaUsed: schemaName
+        };
+      } catch (parseError) {
+        console.error('❌ Failed to parse JSON schema response:', parseError);
+        console.error('Raw response:', completion.choices[0].message.content);
+        throw new Error(`Invalid JSON response from AI: ${parseError.message}`);
+      }
+      
+    } catch (error) {
+      console.error('❌ Structured output with schema generation failed:', error);
+      throw this.handleOpenAIError(error);
+    }
+  }
+
   async generateStructuredOutput(messages, options = {}) {
     try {
       const structuredOptions = {
         ...options,
         response_format: { type: "json_object" },
-        temperature: options.temperature || 0.2 // Lower temperature for structured output
+        temperature: options.temperature || 0.2
       };
 
       const result = await this.generateChatCompletion(messages, structuredOptions);
@@ -87,8 +158,8 @@ class LLMService {
         const parsedContent = JSON.parse(result.content);
         return {
           ...result,
-          content: result.content, // Keep original string
-          parsed: parsedContent    // Add parsed object
+          content: result.content,
+          parsed: parsedContent
         };
       } catch (parseError) {
         console.error('❌ Failed to parse JSON response:', parseError);
@@ -99,6 +170,58 @@ class LLMService {
       console.error('❌ Structured output generation failed:', error);
       throw error;
     }
+  }
+
+  async generateRoadmapWithSchema(systemPrompt, userPrompt, schema, options = {}) {
+    return await this.generateStructuredOutputWithSchema([
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt }
+    ], schema, {
+      schemaName: 'roadmap_generation',
+      schemaDescription: 'A personalized learning roadmap with modules, resources, and tasks',
+      temperature: 0.2,
+      max_tokens: 4000,
+      ...options
+    });
+  }
+
+  async generateRoadmapModificationWithSchema(systemPrompt, userPrompt, schema, options = {}) {
+    return await this.generateStructuredOutputWithSchema([
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt }
+    ], schema, {
+      schemaName: 'roadmap_modification',
+      schemaDescription: 'Modified learning roadmap based on user feedback',
+      temperature: 0.3,
+      max_tokens: 4000,
+      ...options
+    });
+  }
+
+  async generateProgressAnalysisWithSchema(systemPrompt, userPrompt, schema, options = {}) {
+    return await this.generateStructuredOutputWithSchema([
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt }
+    ], schema, {
+      schemaName: 'progress_analysis',
+      schemaDescription: 'Structured analysis of user learning progress',
+      temperature: 0.4,
+      max_tokens: 1500,
+      ...options
+    });
+  }
+
+  async generateStudyPlanWithSchema(systemPrompt, userPrompt, schema, options = {}) {
+    return await this.generateStructuredOutputWithSchema([
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt }
+    ], schema, {
+      schemaName: 'study_plan',
+      schemaDescription: 'Personalized study plan and schedule',
+      temperature: 0.3,
+      max_tokens: 2000,
+      ...options
+    });
   }
 
   /**
@@ -112,7 +235,7 @@ class LLMService {
 
       console.log(`🔢 Generating embedding for text: ${text.substring(0, 50)}...`);
       
-      const openai = this.getOpenAIClient(); // Get client lazily
+      const openai = this.getOpenAIClient();
       const response = await openai.embeddings.create({
         model: options.model || this.defaultEmbeddingModel,
         input: text.trim(),
@@ -134,7 +257,7 @@ class LLMService {
   }
 
   /**
-   * Generate chat completion with system prompt - convenience method
+   * Generate chat completion with system prompt
    */
   async generateWithSystemPrompt(systemPrompt, userMessage, options = {}) {
     const messages = [
@@ -145,9 +268,6 @@ class LLMService {
     return await this.generateChatCompletion(messages, options);
   }
 
-  /**
-   * Generate completion with conversation history
-   */
   async generateWithHistory(systemPrompt, conversationHistory, newMessage, options = {}) {
     const messages = [
       { role: 'system', content: systemPrompt },
@@ -162,7 +282,7 @@ class LLMService {
   }
 
   /**
-   * Check if OpenAI API is available
+   * Check if API is available
    */
   async healthCheck() {
     try {
@@ -173,13 +293,15 @@ class LLMService {
       return {
         status: 'healthy',
         model: result.model,
-        responseTime: Date.now()
+        responseTime: Date.now(),
+        structuredOutputsSupported: true
       };
     } catch (error) {
       return {
         status: 'unhealthy',
         error: error.message,
-        responseTime: Date.now()
+        responseTime: Date.now(),
+        structuredOutputsSupported: false
       };
     }
   }
@@ -188,9 +310,6 @@ class LLMService {
   // PRIVATE HELPER METHODS
   // ========================================
 
-  /**
-   * Format messages to ensure they match OpenAI API requirements
-   */
   formatMessages(messages) {
     if (!Array.isArray(messages)) {
       throw new Error('Messages must be an array');
@@ -205,7 +324,6 @@ class LLMService {
         throw new Error('Each message must have role and content');
       }
       
-      // Validate role
       const validRoles = ['system', 'user', 'assistant'];
       if (!validRoles.includes(msg.role)) {
         throw new Error(`Invalid message role: ${msg.role}. Must be one of: ${validRoles.join(', ')}`);
@@ -218,76 +336,43 @@ class LLMService {
     });
   }
 
-  /**
-   * Handle OpenAI API errors with better error messages
-   */
   handleOpenAIError(error) {
-    // Rate limiting
     if (error.status === 429) {
       return new Error('OpenAI API rate limit exceeded. Please try again later.');
     }
     
-    // Invalid API key
     if (error.status === 401) {
       return new Error('OpenAI API authentication failed. Please check your API key.');
     }
     
-    // Model not found
     if (error.status === 404) {
       return new Error('OpenAI model not found. Please check the model name.');
     }
     
-    // Server errors
     if (error.status >= 500) {
       return new Error('OpenAI API server error. Please try again later.');
     }
     
-    // Token limit exceeded
     if (error.code === 'context_length_exceeded') {
       return new Error('Message too long for the model. Please shorten your input.');
     }
     
-    // Content filter
     if (error.code === 'content_filter') {
       return new Error('Content was filtered by OpenAI safety systems.');
     }
     
-    // Default error
     return new Error(`OpenAI API error: ${error.message || 'Unknown error'}`);
   }
 
-  /**
-   * Get usage statistics for monitoring
-   */
-  getUsageStats() {
-    // In a production app, you'd track this
-    return {
-      totalRequests: 0,
-      totalTokens: 0,
-      averageResponseTime: 0,
-      errorRate: 0
-    };
-  }
-
-  /**
-   * Estimate token count for a message (rough estimation)
-   */
   estimateTokenCount(text) {
     if (!text) return 0;
-    
-    // Rough estimation: 1 token ≈ 4 characters
-    // This is not exact but good for rough estimation
     return Math.ceil(text.length / 4);
   }
 
-  /**
-   * Validate if we're within token limits before making API call
-   */
   validateTokenLimits(messages, options = {}) {
     const model = options.model || this.defaultChatModel;
     const maxTokens = options.max_tokens || this.defaultChatParams.max_tokens;
     
-    // Model token limits (simplified)
     const modelLimits = {
       'gpt-4o-mini': 128000,
       'gpt-4o': 128000,
@@ -296,8 +381,6 @@ class LLMService {
     };
     
     const modelLimit = modelLimits[model] || 4096;
-    
-    // Estimate total tokens
     const messageTokens = messages.reduce((total, msg) => {
       return total + this.estimateTokenCount(msg.content || '');
     }, 0);

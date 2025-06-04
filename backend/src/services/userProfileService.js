@@ -1,11 +1,9 @@
-import { userRepository, roadmapRepository, contentRepository } from '../repositories/index.js';
+import dataService from './data/dataService.js';
 import { User } from '../models/index.js';
 
 class UserProfileService {
     constructor() {
-        this.userRepo = userRepository;
-        this.roadmapRepo = roadmapRepository;
-        this.contentRepo = contentRepository;
+        this.dataService = dataService;
     }
 
     /**
@@ -13,15 +11,15 @@ class UserProfileService {
      */
     async getUserProfile(userId) {
         try {
-            console.log('👤 Getting user profile via repository:', userId);
+            console.log('👤 Getting user profile via data service:', userId);
             
-            const profile = await this.userRepo.getProfile(userId);
+            const profile = await this.dataService.getProfile(userId);
             
             if (!profile) {
                 throw new Error('User profile not found');
             }
             
-            return User(profile);
+            return new User(profile);
         } catch (error) {
             console.error('Error fetching user profile:', error);
             throw error;
@@ -33,9 +31,9 @@ class UserProfileService {
      */
     async getUserSkills(userId) {
         try {
-            console.log('🛠️ Getting user skills via repository:', userId);
+            console.log('🛠️ Getting user skills via data service:', userId);
             
-            return await this.userRepo.getUserSkills(userId);
+            return await this.dataService.getUserSkills(userId);
         } catch (error) {
             console.error('Error fetching user skills:', error);
             throw error;
@@ -47,9 +45,9 @@ class UserProfileService {
      */
     async getUserGoals(userId) {
         try {
-            console.log('🎯 Getting user goals via repository:', userId);
+            console.log('🎯 Getting user goals via data service:', userId);
             
-            return await this.userRepo.getUserGoals(userId);
+            return await this.dataService.getUserGoals(userId);
         } catch (error) {
             console.error('Error fetching user goals:', error);
             throw error;
@@ -61,9 +59,9 @@ class UserProfileService {
      */
     async getCurrentLearningPath(userId) {
         try {
-            console.log('🗺️ Getting current learning path via repository:', userId);
+            console.log('🗺️ Getting current learning path via data service:', userId);
             
-            return await this.roadmapRepo.findActiveByUserId(userId);
+            return await this.dataService.findActiveByUserId(userId);
         } catch (error) {
             console.error('Error fetching current learning path:', error);
             throw error;
@@ -77,12 +75,12 @@ class UserProfileService {
         try {
             console.log('🔍 Creating comprehensive user context:', userId);
             
-            // Fetch all user data in parallel using repositories
+            // Fetch all user data in parallel using data service
             const [profile, skills, goals, currentPath] = await Promise.all([
-                this.userRepo.getProfile(userId),
-                this.userRepo.getUserSkills(userId),
-                this.userRepo.getUserGoals(userId),
-                this.roadmapRepo.findActiveByUserId(userId)
+                this.dataService.getProfile(userId),
+                this.dataService.getUserSkills(userId),
+                this.dataService.getUserGoals(userId),
+                this.dataService.findActiveByUserId(userId)
             ]);
 
             if (!profile) {
@@ -139,28 +137,33 @@ class UserProfileService {
     }
 
     /**
-     * Update user profile using repository
+     * Update user profile using data service
      */
     async updateProfile(userId, updates) {
-        const user = await this.getUserProfile(userId);
-        user.update(updates);
-        
-        if (!user.isValid()) {
-            throw new Error(`Validation failed: ${user.getErrors().map(e => e.message).join(', ')}`);
+        try {
+            const user = await this.getUserProfile(userId);
+            user.update(updates);
+            
+            if (!user.isValid()) {
+                throw new Error(`Validation failed: ${user.getErrors().map(e => e.message).join(', ')}`);
+            }
+            
+            const saved = await this.dataService.updateProfile(userId, user.toDatabase());
+            return new User(saved);
+        } catch (error) {
+            console.error('Error updating user profile:', error);
+            throw error;
         }
-        
-        const saved = await this.userRepository.updateProfile(userId, user.toDatabase());
-        return new User(saved);
     }
 
     /**
-     * Update user skills using repository
+     * Update user skills using data service
      */
     async updateUserSkills(userId, skillIds) {
         try {
-            console.log('💼 Updating user skills via repository:', userId);
+            console.log('💼 Updating user skills via data service:', userId);
             
-            return await this.userRepo.updateUserSkills(userId, skillIds);
+            return await this.dataService.updateUserSkills(userId, skillIds);
         } catch (error) {
             console.error('Error updating user skills:', error);
             throw error;
@@ -168,13 +171,13 @@ class UserProfileService {
     }
 
     /**
-     * Update user goals using repository
+     * Update user goals using data service
      */
     async updateUserGoals(userId, goalIds) {
         try {
-            console.log('🎯 Updating user goals via repository:', userId);
+            console.log('🎯 Updating user goals via data service:', userId);
             
-            return await this.userRepo.updateUserGoals(userId, goalIds);
+            return await this.dataService.updateUserGoals(userId, goalIds);
         } catch (error) {
             console.error('Error updating user goals:', error);
             throw error;
@@ -188,29 +191,43 @@ class UserProfileService {
         try {
             console.log('🎉 Completing user onboarding:', userId);
             
-            // Update profile, skills, and goals in a transaction-like manner
             const operations = [];
 
             // Update profile with onboarding data
             if (onboardingData.profileUpdates) {
-                operations.push(() => this.userRepo.updateProfile(userId, {
-                    ...onboardingData.profileUpdates,
-                    onboarding_complete: true
-                }));
+                operations.push(async () => {
+                    return await this.dataService.updateProfile(userId, {
+                        ...onboardingData.profileUpdates,
+                        onboarding_complete: true
+                    });
+                });
             }
 
             // Update skills
             if (onboardingData.skills && onboardingData.skills.length > 0) {
-                operations.push(() => this.userRepo.updateUserSkills(userId, onboardingData.skills));
+                operations.push(async () => {
+                    return await this.dataService.updateUserSkills(userId, onboardingData.skills);
+                });
             }
 
             // Update goals
             if (onboardingData.goals && onboardingData.goals.length > 0) {
-                operations.push(() => this.userRepo.updateUserGoals(userId, onboardingData.goals));
+                operations.push(async () => {
+                    return await this.dataService.updateUserGoals(userId, onboardingData.goals);
+                });
             }
 
-            // Execute all operations
-            const results = await this.userRepo.db.executeInTransaction(operations);
+            // Execute all operations sequentially
+            const results = [];
+            for (const operation of operations) {
+                try {
+                    const result = await operation();
+                    results.push(result);
+                } catch (error) {
+                    console.error('Operation failed during onboarding:', error);
+                    throw error;
+                }
+            }
 
             console.log('✅ Onboarding completed successfully');
             return { success: true, results };
@@ -221,20 +238,26 @@ class UserProfileService {
     }
 
     /**
-     * Get user learning statistics using repositories
+     * Get user learning statistics using data service
      */
     async getUserStats(userId) {
         try {
-            console.log('📊 Getting user statistics via repositories:', userId);
+            console.log('📊 Getting user statistics via data service:', userId);
             
-            // Get stats from different repositories
-            const [userStats, roadmapStats] = await Promise.all([
-                this.userRepo.getUserStats(userId),
-                this.roadmapRepo.getRoadmapStats(userId)
-            ]);
+            // Get roadmap stats
+            const roadmapStats = await this.dataService.getRoadmapStats(userId);
+            
+            // Get basic user data
+            const profile = await this.dataService.getProfile(userId);
+            const skills = await this.dataService.getUserSkills(userId);
+            const goals = await this.dataService.getUserGoals(userId);
 
             return {
-                ...userStats,
+                completedModules: roadmapStats.completedModules || 0,
+                totalModules: roadmapStats.totalModules || 0,
+                completionPercentage: roadmapStats.completionPercentage || 0,
+                skillsCount: skills.length,
+                goalsCount: goals.length,
                 roadmap: roadmapStats,
                 timestamp: new Date().toISOString()
             };
@@ -251,7 +274,17 @@ class UserProfileService {
         try {
             console.log('⚙️ Getting learning preferences:', userId);
             
-            return await this.userRepo.getLearningPreferences(userId);
+            const profile = await this.dataService.getProfile(userId);
+            
+            if (!profile) return null;
+            
+            return {
+                weeklyLearningHours: profile.weekly_learning_hours || 5,
+                preferredLearningTime: profile.preferred_learning_time || 'evening',
+                careerStage: profile.career_stage || 'student',
+                isEmployed: profile.is_employed === 'yes',
+                userType: profile.user_type || 'mentee'
+            };
         } catch (error) {
             console.error('Error getting learning preferences:', error);
             throw error;
@@ -266,8 +299,8 @@ class UserProfileService {
             console.log('📋 Getting available skills and goals');
             
             const [skills, goals] = await Promise.all([
-                this.contentRepo.getAllSkills(),
-                this.contentRepo.getAllGoals()
+                this.dataService.getAllSkills(),
+                this.dataService.getAllGoals()
             ]);
             
             return { skills, goals };
@@ -278,13 +311,22 @@ class UserProfileService {
     }
 
     /**
-     * Search for content recommendations
+     * Get content recommendations (simplified placeholder)
      */
     async getContentRecommendations(userId, type = 'all', limit = 5) {
         try {
             console.log('💡 Getting content recommendations:', { userId, type, limit });
             
-            return await this.contentRepo.getRecommendations(userId, type, limit);
+            // Simplified recommendations based on user's skills and goals
+            const skills = await this.dataService.getUserSkills(userId);
+            const goals = await this.dataService.getUserGoals(userId);
+            
+            return {
+                recommendations: {
+                    basedOnSkills: skills.slice(0, limit),
+                    basedOnGoals: goals.slice(0, limit)
+                }
+            };
         } catch (error) {
             console.error('Error getting content recommendations:', error);
             throw error;
@@ -296,7 +338,7 @@ class UserProfileService {
      */
     async validateUser(userId) {
         try {
-            const profile = await this.userRepo.getProfile(userId);
+            const profile = await this.dataService.getProfile(userId);
             
             if (!profile) {
                 return { exists: false, hasCompletedOnboarding: false };
@@ -351,7 +393,7 @@ class UserProfileService {
     }
 
     /**
-     * Get user context summary ( logging/debugging)
+     * Get user context summary (for logging/debugging)
      */
     getUserContextSummary(userContext) {
         return {
@@ -370,18 +412,18 @@ class UserProfileService {
      */
     async healthCheck() {
         try {
-            const repoHealth = await this.userRepo.db.healthCheck();
+            const dataHealth = await this.dataService.healthCheck();
             
             return {
-                status: repoHealth.status === 'healthy' ? 'healthy' : 'degraded',
+                status: dataHealth.status === 'healthy' ? 'healthy' : 'degraded',
                 dependencies: {
-                    userRepository: repoHealth.status,
-                    database: repoHealth.connection
+                    dataService: dataHealth.status,
+                    database: dataHealth.database
                 },
                 capabilities: {
-                    profileManagement: repoHealth.status === 'healthy',
-                    skillsManagement: repoHealth.status === 'healthy',
-                    goalsManagement: repoHealth.status === 'healthy',
+                    profileManagement: dataHealth.status === 'healthy',
+                    skillsManagement: dataHealth.status === 'healthy',
+                    goalsManagement: dataHealth.status === 'healthy',
                     contextGeneration: true
                 },
                 timestamp: new Date().toISOString()
