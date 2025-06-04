@@ -1,7 +1,22 @@
-import express from 'express';
 import dotenv from 'dotenv';
-import cors from 'cors';
+
+// Load environment variables FIRST, before importing any other modules
 dotenv.config();
+
+// Verify critical environment variables are present
+const requiredEnvVars = ['OPENAI_API_KEY', 'SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'];
+const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
+
+if (missingVars.length > 0) {
+  console.error('❌ Missing required environment variables:', missingVars.join(', '));
+  console.error('Please create a .env file with the required variables.');
+  process.exit(1);
+}
+
+console.log('✅ Environment variables loaded successfully');
+
+import express from 'express';
+import cors from 'cors';
 
 import roadmapRoutes from './routes/roadmapRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
