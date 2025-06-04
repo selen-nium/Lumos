@@ -1,4 +1,3 @@
-// ChatInterface.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from '@/components/ui/card';
@@ -12,10 +11,13 @@ import {
   BookOpen,
   Target,
   Clock,
-  TrendingUp
+  TrendingUp,
+  CheckCircle,
+  Settings,
+  Zap
 } from 'lucide-react';
 
-const ChatInterface = ({ user, roadmapProgress, modules }) => {
+const ChatInterface = ({ user, roadmapProgress, modules, onRoadmapUpdate }) => {
   const [chatHistory, setChatHistory] = useState([
     {
       role: 'assistant',
@@ -25,7 +27,13 @@ const ChatInterface = ({ user, roadmapProgress, modules }) => {
 • 🎯 Setting study goals and schedules  
 • 📝 Summarizing completed modules
 • 💡 Suggesting next steps
-• 🔄 Reorganizing your learning plan
+• 🔄 **Modifying your learning plan** - NEW!
+
+**Try asking me to:**
+- "Make my roadmap more challenging"
+- "Add more JavaScript modules"
+- "Slow down the pace"
+- "Remove beginner topics I already know"
 
 What would you like to work on today?`,
       timestamp: new Date().toISOString()
@@ -34,6 +42,7 @@ What would you like to work on today?`,
   const [chatMessage, setChatMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [isModifying, setIsModifying] = useState(false);
   const messagesEndRef = useRef(null);
 
   // Auto-scroll to bottom when new messages arrive
@@ -81,18 +90,26 @@ What would you like to work on today?`,
 
     // Add user message immediately
     setChatHistory(prev => [...prev, userMessage]);
+    const currentMessage = chatMessage;
     setChatMessage('');
     setIsLoading(true);
     setError(null);
 
     try {
+      // Check if this is a roadmap modification request
+      const isModificationRequest = detectModificationRequest(currentMessage);
+      
+      if (isModificationRequest) {
+        setIsModifying(true);
+      }
+
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/chat/message`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          message: chatMessage,
+          message: currentMessage,
           context: generateChatContext(),
           chatHistory: chatHistory.slice(-5) // Send last 5 messages for context
         })
@@ -109,10 +126,20 @@ What would you like to work on today?`,
           role: 'assistant',
           content: data.response,
           timestamp: new Date().toISOString(),
-          suggestions: data.suggestions || []
+          suggestions: data.suggestions || [],
+          roadmapUpdated: data.roadmapUpdated || false,
+          updateDetails: data.updateDetails || null
         };
         
         setChatHistory(prev => [...prev, assistantMessage]);
+
+        // If roadmap was updated, trigger refresh
+        if (data.roadmapUpdated && onRoadmapUpdate) {
+          console.log("🔄 Roadmap was updated, triggering refresh...");
+          setTimeout(() => {
+            onRoadmapUpdate();
+          }, 1000); // Small delay to ensure DB is updated
+        }
       } else {
         throw new Error(data.error || 'Failed to get response');
       }
@@ -132,21 +159,24 @@ What would you like to work on today?`,
       setChatHistory(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
-      // In handleSendMessage, after getting a successful response with roadmapUpdated = true:
-      if (data.roadmapUpdated) {
-        // Trigger roadmap refresh
-        if (typeof onRoadmapUpdate === 'function') {
-          setTimeout(() => {
-            onRoadmapUpdate();
-          }, 1000); // Small delay to ensure DB is updated
-        }
-        
-        // Or dispatch a custom event
-        window.dispatchEvent(new CustomEvent('roadmapUpdated', { 
-          detail: { type: 'roadmap_updated' } 
-        }));
-      }
+      setIsModifying(false);
     }
+  };
+
+  // Detect if message is requesting roadmap modification
+  const detectModificationRequest = (message) => {
+    const lowerMessage = message.toLowerCase();
+    const modificationKeywords = [
+      'modify', 'change', 'update', 'edit', 'adjust',
+      'increase', 'decrease', 'add', 'remove', 'delete',
+      'difficulty', 'pace', 'speed', 'challenging', 'easier',
+      'module', 'roadmap', 'plan', 'path'
+    ];
+
+    return modificationKeywords.some(keyword => lowerMessage.includes(keyword)) &&
+           (lowerMessage.includes('roadmap') || lowerMessage.includes('plan') || 
+            lowerMessage.includes('module') || lowerMessage.includes('difficulty') ||
+            lowerMessage.includes('pace'));
   };
 
   const handleSuggestionClick = (suggestion) => {
@@ -220,6 +250,8 @@ What would you like to work on today?`,
                 )}
               </div>
             )}
+
+            {/* Suggestions */}
             {msg.suggestions && msg.suggestions.length > 0 && (
               <div className="mt-3 space-y-2">
                 <div className="text-xs text-muted-foreground/80">Suggestions:</div>
@@ -260,9 +292,28 @@ What would you like to work on today?`,
     },
     {
       icon: <TrendingUp className="h-4 w-4" />,
-      label: "Track goals",
-      message: "How am I doing with my learning goals?"
+      label: "Increase difficulty",
+      message: "Make my roadmap more challenging"
+    },
+    {
+      icon: <Settings className="h-4 w-4" />,
+      label: "Modify pace",
+      message: "Adjust the pace of my learning plan"
+    },
+    {
+      icon: <Zap className="h-4 w-4" />,
+      label: "Add modules",
+      message: "Add more hands-on projects to my roadmap"
     }
+  ];
+
+  const modificationExamples = [
+    "Make my roadmap more challenging",
+    "Add more JavaScript practice modules", 
+    "Remove beginner HTML topics I already know",
+    "Slow down the pace for better understanding",
+    "Focus more on backend development",
+    "Add more practical projects"
   ];
 
   return (
@@ -276,7 +327,7 @@ What would you like to work on today?`,
           <div>
             <h3 className="font-medium">Learning Assistant</h3>
             <p className="text-xs text-muted-foreground">
-              {isLoading ? 'Thinking...' : 'Ready to help'}
+              {isLoading ? (isModifying ? 'Modifying roadmap...' : 'Thinking...') : 'Ready to help'}
             </p>
           </div>
         </div>
@@ -293,15 +344,30 @@ What would you like to work on today?`,
                 variant="outline"
                 size="sm"
                 className="h-auto p-3 flex flex-col items-center gap-2 text-xs"
-                onClick={() => handleSendMessage({ 
-                  preventDefault: () => {}, 
-                  target: { value: action.message } 
-                }) && setChatMessage(action.message)}
+                onClick={() => {
+                  setChatMessage(action.message);
+                }}
               >
                 {action.icon}
                 <span>{action.label}</span>
               </Button>
             ))}
+          </div>
+          
+          {/* Modification Examples */}
+          <div className="mt-4">
+            <div className="text-xs text-muted-foreground mb-2">Try these roadmap modifications:</div>
+            <div className="space-y-1">
+              {modificationExamples.slice(0, 3).map((example, idx) => (
+                <button
+                  key={idx}
+                  className="w-full text-left text-xs p-2 bg-muted/30 hover:bg-muted/50 rounded transition-colors"
+                  onClick={() => setChatMessage(example)}
+                >
+                  "{example}"
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -319,7 +385,7 @@ What would you like to work on today?`,
               </div>
               <div className="bg-muted rounded-lg px-4 py-3">
                 <div className="text-sm text-muted-foreground">
-                  Thinking...
+                  {isModifying ? 'Modifying your roadmap...' : 'Thinking...'}
                 </div>
               </div>
             </div>
@@ -349,7 +415,7 @@ What would you like to work on today?`,
           className="flex-1 px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
           value={chatMessage}
           onChange={(e) => setChatMessage(e.target.value)}
-          placeholder={isLoading ? "Please wait..." : "Ask about your learning..."}
+          placeholder={isLoading ? "Please wait..." : "Ask about your learning or modify your roadmap..."}
           disabled={isLoading}
         />
         <Button 

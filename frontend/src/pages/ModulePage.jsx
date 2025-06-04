@@ -148,10 +148,10 @@ const ModulePage = () => {
 
         console.log("🔍 Looking for module:", moduleId);
 
-        // Fetch the user's learning path to get module data
+        // Fetch the user's active learning path with modules using the new normalized structure
         const { data: pathData, error: pathError } = await supabase
           .from('user_learning_paths')
-          .select('path_data')
+          .select('user_path_id, path_name')
           .eq('user_id', user.id)
           .eq('status', 'active')
           .single();
@@ -161,108 +161,101 @@ const ModulePage = () => {
           throw new Error('Failed to load learning path');
         }
 
-        if (!pathData?.path_data) {
+        if (!pathData) {
           throw new Error('No learning path found');
         }
 
-        const roadmap = pathData.path_data;
-        console.log("📋 Roadmap structure:", {
-          hasPhases: !!roadmap.phases,
-          hasModules: !!roadmap.modules,
-          phasesCount: roadmap.phases?.length,
-          modulesCount: roadmap.modules?.length
-        });
+        // Get the specific module with progress
+        const { data: moduleProgressData, error: moduleError } = await supabase
+          .from('user_module_progress')
+          .select(`
+            *,
+            learning_modules (
+              module_id,
+              module_name,
+              module_description,
+              difficulty,
+              estimated_hours,
+              skills_covered,
+              prerequisites
+            )
+          `)
+          .eq('user_path_id', pathData.user_path_id)
+          .eq('module_id', moduleId)
+          .single();
 
-        // Enhanced module search - try multiple approaches
-        let foundModule = null;
-        let allModules = [];
-
-        // Collect all modules from roadmap
-        if (roadmap.phases && Array.isArray(roadmap.phases)) {
-          roadmap.phases.forEach(phase => {
-            if (phase.modules && Array.isArray(phase.modules)) {
-              allModules.push(...phase.modules);
-            }
-          });
-        } else if (roadmap.modules && Array.isArray(roadmap.modules)) {
-          allModules = roadmap.modules;
+        if (moduleError) {
+          console.error('Error fetching module:', moduleError);
+          throw new Error('Module not found');
         }
 
-        // console.log("📦 All modules found:", allModules.map(m => ({
-        //   id: m.module_id || m.id,
-        //   name: m.module_name || m.name,
-        //   sequence: m.sequence_order
-        // }))
-        foundModule = allModules.find(
-          m => m.module_id?.toString() === moduleId
-        );
-      
-
-        // Try different search strategies
-        // const searchStrategies = [
-        //   // Strategy 1: Exact module_id match
-        //   () => allModules.find(m => (m.module_id || m.id)?.toString() === moduleId),
-          
-        //   // Strategy 2: Sequence order match (for when module IDs change after modification)
-        //   () => allModules.find(m => m.sequence_order?.toString() === moduleId),
-          
-        //   // Strategy 3: Array index match (fallback)
-        //   () => allModules[parseInt(moduleId) - 1],
-          
-        //   // Strategy 4: Find first module with matching name pattern
-        //   () => allModules.find(m => {
-        //     const name = (m.module_name || m.name || '').toLowerCase();
-        //     return name.includes('module ' + moduleId) || name.includes('#' + moduleId);
-        //   }),
-          
-        //   // Strategy 5: Just get the module at the position (zero-indexed)
-        //   () => allModules[parseInt(moduleId)]
-        // ];
-
-        // 
-
-        if (!foundModule) {
-          console.error("❌ Module not found with any strategy");
-          console.log("Available modules:", allModules.map(m => ({
-            module_id: m.module_id,
-            id: m.id,
-            sequence_order: m.sequence_order,
-            name: m.module_name || m.name
-          })));
-          
-          // Show a helpful error with available modules
-          setError({
-            type: 'module_not_found',
-            availableModules: allModules.map((m, index) => ({
-              id: m.module_id || m.id || index + 1,
-              name: m.module_name || m.name || `Module ${index + 1}`,
-              sequence_order: m.sequence_order || index + 1
-            }))
-          });
-          return;
+        if (!moduleProgressData) {
+          throw new Error('Module not found');
         }
 
-        // Process the module data with enhancements
+        const moduleData = moduleProgressData.learning_modules;
+
+        // Get resources for this module
+        const { data: resourcesData } = await supabase
+          .from('module_resources')
+          .select(`
+            sequence_order,
+            is_required,
+            learning_resources (
+              resource_id,
+              resource_title,
+              resource_type,
+              url,
+              estimated_time_minutes,
+              description
+            )
+          `)
+          .eq('module_id', moduleId)
+          .order('sequence_order');
+
+        // Get tasks for this module
+        const { data: tasksData } = await supabase
+          .from('module_tasks')
+          .select(`
+            sequence_order,
+            is_required,
+            hands_on_tasks (
+              task_id,
+              task_title,
+              task_description,
+              task_type,
+              estimated_time_minutes,
+              instructions
+            )
+          `)
+          .eq('module_id', moduleId)
+          .order('sequence_order');
+
+        // Process the module data
         const processedModule = {
-          id: foundModule.module_id || foundModule.id || moduleId,
-          name: foundModule.module_name || foundModule.name || `Module ${moduleId}`,
-          description: foundModule.module_description || foundModule.description || 
-            generateDefaultDescription(foundModule.module_name || foundModule.name),
-          difficulty: foundModule.difficulty || 'Beginner',
-          estimated_duration_weeks: foundModule.estimated_duration_weeks || 
-            Math.ceil((foundModule.estimated_completion_time_hours || 3) / 10),
-          estimated_completion_hours: foundModule.estimated_completion_time_hours || 
-            foundModule.estimated_completion_hours || 3,
-          sequence_order: foundModule.sequence_order || parseInt(moduleId),
-          isCompleted: foundModule.isCompleted || false,
-          resources: processResources(foundModule.resources || [])
+          id: moduleData.module_id,
+          name: moduleData.module_name,
+          description: moduleData.module_description,
+          difficulty: moduleData.difficulty || 'Beginner',
+          estimated_duration_weeks: Math.ceil((moduleData.estimated_hours || 3) / 10),
+          estimated_completion_hours: moduleData.estimated_hours || 3,
+          sequence_order: moduleProgressData.sequence_order,
+          isCompleted: moduleProgressData.is_completed || false,
+          resources: (resourcesData || []).map(r => ({
+            ...r.learning_resources,
+            sequence_order: r.sequence_order,
+            is_required: r.is_required
+          })),
+          tasks: (tasksData || []).map(t => ({
+            ...t.hands_on_tasks,
+            sequence_order: t.sequence_order,
+            is_required: t.is_required
+          }))
         };
 
         setModule(processedModule);
         setResources(processedModule.resources);
-        setTasks(foundModule.tasks || []);
-        
-        // Calculate progress based on completion status
+        setTasks(processedModule.tasks);
         setProgress(processedModule.isCompleted ? 100 : 0);
 
         console.log("✅ Module loaded successfully:", processedModule.name);
@@ -282,54 +275,58 @@ const ModulePage = () => {
     if (!user || !module) return;
 
     try {
-      // Update the module completion status in the user's learning path
-      const { data: pathData, error: fetchError } = await supabase
+      console.log('🔄 Completing module:', {
+        userId: user.id,
+        moduleId: module.id,
+        moduleName: module.name
+      });
+
+      // Get the user's learning path ID first
+      const { data: pathData, error: pathError } = await supabase
         .from('user_learning_paths')
-        .select('path_data')
+        .select('user_path_id')
         .eq('user_id', user.id)
         .eq('status', 'active')
         .single();
 
-      if (fetchError) throw fetchError;
-
-      // Update the module completion status
-      const updatedPathData = { ...pathData.path_data };
-      
-      const updateModuleInArray = (modules) => {
-        return modules.map(m => {
-          // Try multiple matching strategies
-          const moduleMatches = 
-            (m.module_id || m.id)?.toString() === moduleId ||
-            m.sequence_order?.toString() === moduleId ||
-            (m.module_name || m.name) === module.name;
-            
-          if (moduleMatches) {
-            return { ...m, isCompleted: true };
-          }
-          return m;
-        });
-      };
-
-      if (updatedPathData.phases) {
-        updatedPathData.phases = updatedPathData.phases.map(phase => ({
-          ...phase,
-          modules: phase.modules ? updateModuleInArray(phase.modules) : []
-        }));
-      } else if (updatedPathData.modules) {
-        updatedPathData.modules = updateModuleInArray(updatedPathData.modules);
+      if (pathError) {
+        console.error('Error fetching learning path:', pathError);
+        throw new Error('Could not find your learning path');
       }
 
-      // Save the updated path data
-      const { error: updateError } = await supabase
-        .from('user_learning_paths')
-        .update({ 
-          path_data: updatedPathData,
-          updated_at: new Date().toISOString()
-        })
-        .eq('user_id', user.id)
-        .eq('status', 'active');
+      if (!pathData) {
+        throw new Error('No active learning path found');
+      }
 
-      if (updateError) throw updateError;
+      console.log('📍 Found learning path:', pathData.user_path_id);
+
+      // Update the module completion status using the normalized structure
+      const { data: updateData, error: updateError } = await supabase
+        .from('user_module_progress')
+        .update({ 
+          is_completed: true,
+          completion_date: new Date().toISOString(),
+          progress_percentage: 100
+        })
+        .eq('user_path_id', pathData.user_path_id)
+        .eq('module_id', module.id)
+        .eq('status', 'active')
+        .select();
+
+      if (updateError) {
+        console.error('Error updating module completion:', updateError);
+        throw new Error('Failed to update module completion');
+      }
+
+      if (!updateData || updateData.length === 0) {
+        console.error('No module progress record found for:', {
+          userPathId: pathData.user_path_id,
+          moduleId: module.id
+        });
+        throw new Error('Module not found in your learning path');
+      }
+
+      console.log('✅ Module completion updated:', updateData);
 
       // Update local state
       setModule(prev => ({ ...prev, isCompleted: true }));
@@ -343,7 +340,7 @@ const ModulePage = () => {
 
     } catch (error) {
       console.error('Error completing module:', error);
-      alert('Failed to complete module. Please try again.');
+      alert(`Failed to complete module: ${error.message}`);
     }
   };
 
@@ -646,7 +643,7 @@ const ModulePage = () => {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-start justify-between gap-4 mb-2">
                               <h3 className="font-medium text-lg leading-tight">
-                                {resource.title}
+                                {resource.resource_title}
                               </h3>
                               <Badge 
                                 variant="outline" 
