@@ -21,65 +21,67 @@ import {
   PlayCircle,
   AlertTriangle
 } from 'lucide-react';
+import Lottie from "react-lottie-player";
+import confettiAnimation from "../assets/animation/confetti.json";
 
-// Helper functions (keep existing ones)
-const generateDefaultDescription = (moduleName) => {
-  if (!moduleName) return "Learn the fundamentals of this topic";
+// Helper functions
+// const generateDefaultDescription = (moduleName) => {
+//   if (!moduleName) return "Learn the fundamentals of this topic";
   
-  const descriptions = {
-    'ui/ux': `Understand the principles of user interface design|Learn user experience research methods|Practice creating wireframes and prototypes|Study color theory and typography`,
-    'html': `Master HTML5 semantic elements|Learn proper document structure|Understand accessibility best practices|Practice building responsive layouts`,
-    'css': `Master CSS selectors and properties|Learn responsive design techniques|Understand CSS Grid and Flexbox|Practice modern CSS features`,
-    'javascript': `Understand JavaScript fundamentals|Learn DOM manipulation|Master asynchronous programming|Practice with ES6+ features`,
-    'react': `Learn React component architecture|Understand state management|Master React hooks and lifecycle|Build interactive applications`,
-    'node': `Understand server-side JavaScript|Learn to build REST APIs|Master npm and package management|Practice database integration`,
-    'database': `Learn database design principles|Understand SQL fundamentals|Practice data modeling|Master database optimization`,
-    'devops': `Learn CI/CD pipelines|Understand containerization with Docker|Master cloud deployment|Practice infrastructure automation`,
-    'vue': `Learn Vue.js component system|Understand reactive data binding|Master Vue CLI and ecosystem|Build single-page applications`,
-    'design': `Study design principles and theory|Learn about visual hierarchy|Practice with design tools|Understand user-centered design`
-  };
+//   const descriptions = {
+//     'ui/ux': `Understand the principles of user interface design|Learn user experience research methods|Practice creating wireframes and prototypes|Study color theory and typography`,
+//     'html': `Master HTML5 semantic elements|Learn proper document structure|Understand accessibility best practices|Practice building responsive layouts`,
+//     'css': `Master CSS selectors and properties|Learn responsive design techniques|Understand CSS Grid and Flexbox|Practice modern CSS features`,
+//     'javascript': `Understand JavaScript fundamentals|Learn DOM manipulation|Master asynchronous programming|Practice with ES6+ features`,
+//     'react': `Learn React component architecture|Understand state management|Master React hooks and lifecycle|Build interactive applications`,
+//     'node': `Understand server-side JavaScript|Learn to build REST APIs|Master npm and package management|Practice database integration`,
+//     'database': `Learn database design principles|Understand SQL fundamentals|Practice data modeling|Master database optimization`,
+//     'devops': `Learn CI/CD pipelines|Understand containerization with Docker|Master cloud deployment|Practice infrastructure automation`,
+//     'vue': `Learn Vue.js component system|Understand reactive data binding|Master Vue CLI and ecosystem|Build single-page applications`,
+//     'design': `Study design principles and theory|Learn about visual hierarchy|Practice with design tools|Understand user-centered design`
+//   };
   
-  const name = moduleName.toLowerCase();
-  for (const [key, desc] of Object.entries(descriptions)) {
-    if (name.includes(key)) return desc;
-  }
+//   const name = moduleName.toLowerCase();
+//   for (const [key, desc] of Object.entries(descriptions)) {
+//     if (name.includes(key)) return desc;
+//   }
   
-  return `Learn ${moduleName} fundamentals|Understand core concepts|Practice with hands-on exercises|Apply knowledge to real projects`;
-};
+//   return `Learn ${moduleName} fundamentals|Understand core concepts|Practice with hands-on exercises|Apply knowledge to real projects`;
+// };
 
-const processResources = (resources) => {
-  if (!Array.isArray(resources)) return [];
+// const processResources = (resources) => {
+//   if (!Array.isArray(resources)) return [];
   
-  return resources.map((resource, index) => {
-    if (typeof resource === 'object' && resource !== null) {
-      return {
-        id: resource.id || index,
-        title: resource.title || resource.resource_title || `Resource ${index + 1}`,
-        url: resource.url || '#',
-        resource_type: resource.resource_type || resource.type || 'article',
-        estimated_time_minutes: resource.estimated_time_minutes || 30
-      };
-    }
+//   return resources.map((resource, index) => {
+//     if (typeof resource === 'object' && resource !== null) {
+//       return {
+//         id: resource.id || index,
+//         title: resource.title || resource.resource_title || `Resource ${index + 1}`,
+//         url: resource.url || '#',
+//         resource_type: resource.resource_type || resource.type || 'article',
+//         estimated_time_minutes: resource.estimated_time_minutes || 30
+//       };
+//     }
     
-    if (typeof resource === 'string') {
-      return {
-        id: index,
-        title: resource,
-        url: generateResourceUrl(resource),
-        resource_type: detectResourceType(resource),
-        estimated_time_minutes: estimateTimeFromTitle(resource)
-      };
-    }
+//     if (typeof resource === 'string') {
+//       return {
+//         id: index,
+//         title: resource,
+//         url: generateResourceUrl(resource),
+//         resource_type: detectResourceType(resource),
+//         estimated_time_minutes: estimateTimeFromTitle(resource)
+//       };
+//     }
     
-    return {
-      id: index,
-      title: `Resource ${index + 1}`,
-      url: '#',
-      resource_type: 'article',
-      estimated_time_minutes: 30
-    };
-  });
-};
+//     return {
+//       id: index,
+//       title: `Resource ${index + 1}`,
+//       url: '#',
+//       resource_type: 'article',
+//       estimated_time_minutes: 30
+//     };
+//   });
+// };
 
 const generateResourceUrl = (resourceTitle) => {
   const title = resourceTitle.toLowerCase();
@@ -137,6 +139,7 @@ const ModulePage = () => {
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState(null);
   const [tasks, setTasks] = useState([]);
+  const [showCompletionUI, setShowCompletionUI] = useState(false);
 
   useEffect(() => {
     const fetchModuleData = async () => {
@@ -281,7 +284,7 @@ const ModulePage = () => {
         moduleName: module.name
       });
 
-      // Get the user's learning path ID first
+      // Fetch path
       const { data: pathData, error: pathError } = await supabase
         .from('user_learning_paths')
         .select('user_path_id')
@@ -289,18 +292,11 @@ const ModulePage = () => {
         .eq('status', 'active')
         .single();
 
-      if (pathError) {
-        console.error('Error fetching learning path:', pathError);
-        throw new Error('Could not find your learning path');
-      }
-
-      if (!pathData) {
-        throw new Error('No active learning path found');
-      }
+      if (pathError || !pathData) throw new Error('Could not find your learning path');
 
       console.log('📍 Found learning path:', pathData.user_path_id);
 
-      // Update the module completion status using the normalized structure
+      // Update module completion
       const { data: updateData, error: updateError } = await supabase
         .from('user_module_progress')
         .update({ 
@@ -313,17 +309,8 @@ const ModulePage = () => {
         .eq('status', 'active')
         .select();
 
-      if (updateError) {
-        console.error('Error updating module completion:', updateError);
+      if (updateError || !updateData || updateData.length === 0) {
         throw new Error('Failed to update module completion');
-      }
-
-      if (!updateData || updateData.length === 0) {
-        console.error('No module progress record found for:', {
-          userPathId: pathData.user_path_id,
-          moduleId: module.id
-        });
-        throw new Error('Module not found in your learning path');
       }
 
       console.log('✅ Module completion updated:', updateData);
@@ -332,11 +319,8 @@ const ModulePage = () => {
       setModule(prev => ({ ...prev, isCompleted: true }));
       setProgress(100);
 
-      // Show success message
-      alert('Congratulations! You have completed this module.');
-      
-      // Navigate back to home
-      navigate('/');
+      // 🎉 Show animated UI
+      setShowCompletionUI(true);
 
     } catch (error) {
       console.error('Error completing module:', error);
@@ -374,6 +358,7 @@ const ModulePage = () => {
     }
   };
 
+  // Loading state
   if (loading) {
     return (
       <Layout>
@@ -387,6 +372,7 @@ const ModulePage = () => {
     );
   }
 
+  // Error state (no confetti here)
   if (error) {
     return (
       <Layout>
@@ -442,9 +428,48 @@ const ModulePage = () => {
     );
   }
 
-  // Rest of the component remains the same...
+  // Main UI + Confetti overlay
   return (
     <Layout>
+      {showCompletionUI && (
+        <div className="fixed inset-0 z-50">
+          {/* Confetti */}
+          <Lottie
+            loop={false}
+            play
+            animationData={confettiAnimation}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              pointerEvents: 'none',
+              zIndex: 50
+            }}
+          />
+
+          {/* Centered Congratulations */}
+          <div className="absolute inset-0 flex items-center justify-center z-60 bg-black/10">
+            <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md text-center">
+              <h2 className="text-3xl font-bold mb-4 text-green-600">🎉 Congratulations!</h2>
+              <p className="text-muted-foreground mb-6">
+                You've successfully completed the <strong>{module.name}</strong> module.
+              </p>
+
+              <Button
+                onClick={() => {
+                  setShowCompletionUI(false);
+                  navigate('/');
+                }}
+              >
+                Return to Dashboard
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="container mx-auto px-4 py-8">
         {/* Module Header */}
         <div className="mb-8">
@@ -689,6 +714,7 @@ const ModulePage = () => {
             </div>
           )}
 
+          {/* Tasks Tab */}
           {activeTab === 'tasks' && (
             <div className="space-y-6">
               <div className="flex justify-between items-center">
@@ -739,7 +765,6 @@ const ModulePage = () => {
               )}
             </div>
           )}
-
         </div>
       </div>
     </Layout>
