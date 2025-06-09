@@ -22,7 +22,7 @@ const ChatInterface = ({ user, roadmapProgress, modules, onRoadmapUpdate }) => {
   const [chatHistory, setChatHistory] = useState([
     {
       role: 'assistant',
-      content: `Hi${user ? ` ${user.email.split('@')[0]}` : ''}! 👋 I'm your learning assistant. I can help you with:
+      content: `Hi${user?.username ? ` ${user.username}` : ''}! 👋 I'm your learning assistant. I can help you with:
       
 • 📚 Understanding your learning roadmap
 • 🎯 Setting study goals and schedules  

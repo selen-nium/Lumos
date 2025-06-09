@@ -157,6 +157,22 @@
     cursor: not-allowed;
     opacity: 0.5;
   }
+  /* timeline overwrites */
+  .vertical-timeline::before {
+    background: #e5e7eb !important;
+  }
+
+  .vertical-timeline-element.completed 
+    .vertical-timeline-element-icon::before,
+  .vertical-timeline-element.completed 
+    .vertical-timeline-element-icon::after {
+    background: #000 !important;
+  }
+  
+  .completed-icon::before,
+  .completed-icon::after {
+    background: #000 !important;
+  }
 }
 
 @layer utilities {
@@ -305,6 +321,7 @@
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     border-color: hsl(var(--foreground) / 0.2);
   }
+
 }
 
 @keyframes fadeIn {

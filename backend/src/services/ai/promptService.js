@@ -35,13 +35,13 @@ LEARNER PROFILE:
 - Available Time: ${userContext.timeAvailable} hours per week
 - Preferred Learning Time: ${userContext.profile?.preferred_learning_time || 'Not specified'}
 
-ROADMAP REQUIREMENTS:
-1. Create 4-6 modules that build logically toward their goals
-2. Each module MUST include exactly 4-5 diverse learning resources
-3. Each module MUST include exactly 3 hands-on tasks/projects
-4. Tailor difficulty to match their experience level
-5. Ensure progression leads directly toward their stated goals
-6. Skip topics they already know well - focus on growth areas
+ROADMAP GUIDELINES:
+1. Aim for 4–6 logical modules; fewer or more are fine if they better serve the goal.
+2. Each module should include 4–5 varied learning resources.
+3. Include ~3 hands-on tasks or projects per module.
+4. Match difficulty to the learner’s experience.
+5. Focus on areas for growth; skip what they already know.
+6. Ensure clear progression toward their stated goals.
 
 RESOURCE GUIDELINES:
 - Mix resource types: videos, documentation, tutorials, articles, interactive content
@@ -56,7 +56,9 @@ TASK GUIDELINES:
 - Provide clear, actionable descriptions
 - Range from 30-180 minutes per task
 
-Focus on practical, industry-relevant skills that directly support their career goals. Consider their time constraints and create a realistic timeline.`;
+Focus on practical, industry-relevant skills that directly support their career goals. Consider their time constraints and create a realistic timeline.
+Before finalizing: Remove or revise ny modules that cover topics the user already knows well.
+`;
   }
 
   getRoadmapModificationPrompt(modificationRequest, editType, userContext, roadmapContext, modulesContext) {

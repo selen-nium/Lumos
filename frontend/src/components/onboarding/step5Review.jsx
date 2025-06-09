@@ -1,8 +1,30 @@
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
 
 const Step5Review = ({ formik, skills, goals, selectedSkills, selectedGoals, generatingRoadmap }) => {
   const getSkillName = (id) => skills.find(s => s.skill_id === id)?.skill_name;
   const getGoalTitle = (id) => goals.find(g => g.goal_id === id)?.goal_title;
+
+  // hardcoded progress bar
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    let interval;
+    if (generatingRoadmap) {
+      setProgress(0);
+      const stepTime = 25000 / 99;
+      let current = 0;
+      interval = setInterval(() => {
+        current += 1;
+        setProgress(current);
+        if (current >= 99) {
+          clearInterval(interval);
+        }
+      }, stepTime);
+    }
+    return () => clearInterval(interval);
+  }, [generatingRoadmap]);
 
   return (
     <div className="space-y-6">
@@ -17,8 +39,13 @@ const Step5Review = ({ formik, skills, goals, selectedSkills, selectedGoals, gen
       </div>
 
       {generatingRoadmap && (
-        <div className="text-center">
-          <div className="animate-spin h-10 w-10 rounded-full border-t-2 border-b-2 border-btn-dark mx-auto mb-2" />
+        <div className="text-center space-y-2">
+          <Progress
+            value={progress}
+            max={100}
+            className="w-full h-3 bg-white rounded-full overflow-hidden"
+          />
+          <p className="text-sm font-medium text-black">{progress}% completed</p>
           <p className="text-muted-foreground">Generating your roadmap...</p>
         </div>
       )}

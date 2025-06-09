@@ -6,7 +6,7 @@ import { supabase } from '../supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { AlertCircle, Loader2, ChevronLeft, ChevronRight, CheckCircle } from 'lucide-react';
+import { AlertCircle, Loader2, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 import Logo from '../components/common/Logo';
 import Step1Profile from '../components/onboarding/Step1Profile';
 import Step2Career from '../components/onboarding/Step2Career';
@@ -54,7 +54,10 @@ const OnboardingPage = () => {
       userType: 'mentee'
     },
     validationSchema: Yup.object({
-      username: Yup.string().required('Required'),
+      username: Yup.string()
+        .min(2, 'Username must be at least 2 characters')
+        .max(50, 'Username must be less than 50 characters')
+        .required('Username is required'),
       isEmployed: Yup.string().required('Required'),
       careerStage: Yup.string().required('Required'),
       company: Yup.string().when('isEmployed', {
@@ -75,6 +78,9 @@ const OnboardingPage = () => {
       setError('');
 
       try {
+        console.log('🚀 Starting onboarding process for user:', user.id);
+
+        // Step 1: Save profile data
         const profileData = {
           id: user.id,
           username: values.username,
@@ -86,22 +92,36 @@ const OnboardingPage = () => {
           weekly_learning_hours: values.weeklyLearningHours,
           preferred_learning_time: values.preferredLearningTime,
           user_type: values.userType,
-          onboarding_complete: true,
+          onboarding_complete: false, // Keep false until everything is done
           updated_at: new Date().toISOString(),
         };
 
-        await supabase.from('profiles').upsert(profileData);
+        console.log('💾 Saving profile data...');
+        const { error: profileError } = await supabase.from('profiles').upsert(profileData);
+        if (profileError) {
+          console.error('Profile save error:', profileError);
+          throw new Error(`Failed to save profile: ${profileError.message}`);
+        }
 
+        // Step 2: Save skills
         if (selectedSkills.length > 0) {
+          console.log('🛠️ Saving user skills...');
           const userSkills = selectedSkills.map(id => ({
             user_id: user.id,
             skill_id: id,
             proficiency_level: 3
           }));
-          await supabase.from('user_skills').upsert(userSkills);
+          
+          const { error: skillsError } = await supabase.from('user_skills').upsert(userSkills);
+          if (skillsError) {
+            console.error('Skills save error:', skillsError);
+            throw new Error(`Failed to save skills: ${skillsError.message}`);
+          }
         }
 
+        // Step 3: Save goals
         if (selectedGoals.length > 0) {
+          console.log('🎯 Saving user goals...');
           const userGoals = selectedGoals.map(id => ({
             user_id: user.id,
             goal_id: id,
@@ -109,12 +129,25 @@ const OnboardingPage = () => {
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           }));
-          await supabase.from('user_goals').upsert(userGoals);
+          
+          const { error: goalsError } = await supabase.from('user_goals').upsert(userGoals);
+          if (goalsError) {
+            console.error('Goals save error:', goalsError);
+            throw new Error(`Failed to save goals: ${goalsError.message}`);
+          }
         }
 
+        console.log('✅ Profile data saved successfully');
+
+        // Step 4: Generate roadmap
         setGeneratingRoadmap(true);
+        console.log('🗺️ Generating roadmap...');
 
         const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          throw new Error('Session expired. Please login again.');
+        }
+
         const response = await fetch(`${import.meta.env.VITE_API_URL}/api/roadmap/generate`, {
           method: 'POST',
           headers: {
@@ -134,24 +167,65 @@ const OnboardingPage = () => {
           })
         });
 
-        const result = await response.json();
-        if (!result.success) throw new Error(result.error || 'Failed to generate roadmap');
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('Roadmap API error:', errorText);
+          throw new Error(`Roadmap generation failed: ${response.status} ${response.statusText}`);
+        }
 
-        const { data: profileCheck } = await supabase
+        const result = await response.json();
+        console.log('🗺️ Roadmap generation result:', result);
+
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to generate roadmap');
+        }
+
+        console.log('✅ Roadmap generated successfully');
+
+        // Step 5: Mark onboarding as complete
+        console.log('✅ Marking onboarding as complete...');
+        const { error: completionError } = await supabase
+          .from('profiles')
+          .update({ 
+            onboarding_complete: true,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', user.id);
+
+        if (completionError) {
+          console.error('Completion update error:', completionError);
+          throw new Error(`Failed to complete onboarding: ${completionError.message}`);
+        }
+
+        // Step 6: Verify onboarding completion
+        console.log('🔍 Verifying onboarding completion...');
+        const { data: profileCheck, error: checkError } = await supabase
           .from('profiles')
           .select('onboarding_complete')
           .eq('id', user.id)
           .single();
 
-        if (profileCheck?.onboarding_complete) {
+        if (checkError) {
+          console.error('Profile check error:', checkError);
+          throw new Error(`Failed to verify onboarding: ${checkError.message}`);
+        }
+
+        console.log('📋 Profile check result:', profileCheck);
+
+        if (profileCheck?.onboarding_complete === true) {
+          console.log('🎉 Onboarding completed successfully! Redirecting...');
           navigate(`/home?fromOnboarding=true&t=${Date.now()}`);
         } else {
-          setError('Onboarding not completed properly. Please try again.');
+          console.error('❌ Onboarding completion check failed:', profileCheck);
+          throw new Error('Onboarding completion verification failed. Please try again.');
         }
 
       } catch (err) {
-        console.error(err);
+        console.error('❌ Onboarding error:', err);
         setError(err.message || 'An unexpected error occurred. Please try again.');
+        
+        // Reset the roadmap generation state on error
+        setGeneratingRoadmap(false);
       } finally {
         setIsLoading(false);
         setGeneratingRoadmap(false);
@@ -183,35 +257,72 @@ const OnboardingPage = () => {
       {/* Card Container */}
       <Card className="w-full max-w-3xl shadow-lg">
         <CardContent className="p-6 space-y-6">
-          <h1 className="text-2xl font-semibold text-center">Let's Get Started</h1>
+          <h1 className="text-2xl font-semibold text-center">Before we get started...</h1>
           {renderStep()}
 
           <div className="flex justify-between items-center mt-4">
             {currentStep > 1 ? (
-              <Button variant="outline" onClick={() => setCurrentStep(s => s - 1)}>
-                <ChevronLeft className="w-4 h-4 mr-2" /> Back
+              <Button 
+                variant="outline" 
+                className='group' 
+                size='sm' 
+                onClick={() => setCurrentStep(s => s - 1)}
+                disabled={isLoading || generatingRoadmap}
+              >
+                <ChevronLeft className="w-4 h-4 mr-1 group-hover:-translate-x-1 transition-transform" /> Back
               </Button>
             ) : <div />}
 
             {currentStep < totalSteps ? (
-              <Button onClick={() => setCurrentStep(s => s + 1)}>
-                Next <ChevronRight className="w-4 h-4 ml-2" />
+              <Button 
+                variant='default' 
+                className='group' 
+                size='sm' 
+                onClick={() => setCurrentStep(s => s + 1)}
+                disabled={isLoading || generatingRoadmap}
+              >
+                Next <ChevronRight className="h-4 w-4 ml-1 group-hover:translate-x-1 transition-transform" />
               </Button>
             ) : (
-              <Button type='submit' onClick={formik.handleSubmit} disabled={isLoading || generatingRoadmap}>
-                {generatingRoadmap || isLoading ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              <Button 
+                type='submit' 
+                className='w-50 h-10 group hover:scale-105 transition-transform' 
+                onClick={formik.handleSubmit} 
+                disabled={isLoading || generatingRoadmap}
+              >
+                {generatingRoadmap ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  </>
+                ) : isLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
                 ) : (
-                  <CheckCircle className="w-4 h-4 mr-2" />
+                  <>
+                    <Sparkles className="w-4 h-4 mr-2 group-hover:rotate-20 transition-transform" />
+                    Generate Roadmap
+                  </>
                 )}
-                Finish
               </Button>
             )}
           </div>
 
           {error && (
-            <div className="flex items-center text-sm text-destructive mt-2">
-              <AlertCircle className="w-4 h-4 mr-2" /> {error}
+            <div className="flex items-start text-sm text-destructive mt-2 p-3 bg-red-50 border border-red-200 rounded-md">
+              <AlertCircle className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" /> 
+              <span>{error}</span>
+            </div>
+          )}
+
+          {generatingRoadmap && (
+            <div className="text-center text-sm text-muted-foreground bg-blue-50 border border-blue-200 rounded-md p-3">
+              <div className="flex items-center justify-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Creating your personalized learning roadmap...</span>
+              </div>
+              <p className="text-xs mt-1">This may take a few moments</p>
             </div>
           )}
         </CardContent>

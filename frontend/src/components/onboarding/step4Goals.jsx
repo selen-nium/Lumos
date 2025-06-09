@@ -7,8 +7,8 @@ const Step4Goals = ({ goals, selectedGoals, setSelectedGoals }) => {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-semibold">Your Learning Goals</h2>
-      <p className="text-muted-foreground">Select your learning objectives:</p>
+      <h2 className="text-xl font-semibold">Learning Goals</h2>
+      <p className="text-muted-foreground">Select one or more learning objectives:</p>
       <div className="space-y-4">
         {goals.map(goal => (
           <div

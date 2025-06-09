@@ -42,7 +42,7 @@ const taskSchema = {
     },
     task_type: {
       type: "string",
-      enum: ["practice", "project", "quiz", "exercise"],
+      enum: ["practice", "project", "quiz"],
       description: "Type of task"
     },
     estimated_time_minutes: {

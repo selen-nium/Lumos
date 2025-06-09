@@ -1,242 +1,554 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { motion, useInView, useAnimation } from 'framer-motion';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Progress } from "@/components/ui/progress";
-// import { Calendar } from "@/components/ui/calendar";
 import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
 import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Tooltip } from 'recharts';
 import Layout from '@/components/common/Layout';
+import { Trophy, Award, Star, Zap, Target, Calendar, Clock, BookOpen } from 'lucide-react';
+
+// Optimized counter component with better performance
+const AnimatedCounter = React.memo(({ value, duration = 1500, suffix = '', prefix = '' }) => {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    // Use easing function for smoother animation
+    const easeOutQuart = t => 1 - Math.pow(1 - t, 4);
+    
+    let startTime = null;
+    let animationId = null;
+    
+    const animate = (currentTime) => {
+      if (startTime === null) startTime = currentTime;
+      const progress = Math.min((currentTime - startTime) / duration, 1);
+      const easedProgress = easeOutQuart(progress);
+      const currentCount = Math.floor(easedProgress * value);
+      
+      setCount(currentCount);
+
+      if (progress < 1) {
+        animationId = requestAnimationFrame(animate);
+      }
+    };
+
+    animationId = requestAnimationFrame(animate);
+    
+    // Cleanup
+    return () => {
+      if (animationId) {
+        cancelAnimationFrame(animationId);
+      }
+    };
+  }, [value, duration]);
+
+  return (
+    <span className="text-4xl font-bold text-gray-900">
+      {prefix}{count.toLocaleString()}{suffix}
+    </span>
+  );
+});
+
+// Optimized badge component with ref-based animation triggering
+const Badge = React.memo(({ icon: Icon, title, description, color, unlocked = true, delay = 0 }) => {
+  const ref = React.useRef(null);
+  const isInView = useInView(ref, { once: true, margin: "-50px" });
+  
+  // Optimized animation variants
+  const variants = {
+    hidden: { 
+      opacity: 0, 
+      scale: 0.8,
+      y: 20
+    },
+    visible: { 
+      opacity: 1, 
+      scale: 1,
+      y: 0,
+      transition: {
+        duration: 0.4,
+        ease: [0.25, 0.46, 0.45, 0.94], // Custom cubic-bezier
+        delay
+      }
+    }
+  };
+
+  const checkmarkVariants = {
+    hidden: { scale: 0, rotate: -180 },
+    visible: { 
+      scale: 1, 
+      rotate: 0,
+      transition: {
+        type: "spring",
+        stiffness: 300,
+        damping: 20,
+        delay: delay + 0.2
+      }
+    }
+  };
+
+  return (
+    <motion.div
+      ref={ref}
+      variants={variants}
+      initial="hidden"
+      animate={isInView ? "visible" : "hidden"}
+      className={`relative p-6 rounded-2xl backdrop-blur-md border border-white/20 
+        ${unlocked 
+          ? 'bg-white/10 shadow-lg' 
+          : 'bg-gray-500/10 grayscale'
+        } 
+        hover:bg-white/20 transition-colors duration-200 group cursor-pointer will-change-transform`}
+      // Optimize for GPU acceleration
+      style={{ willChange: 'transform, opacity' }}
+    >
+      <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-4 
+        ${color} ${unlocked ? 'shadow-lg' : 'bg-gray-400'}`}>
+        <Icon className="w-6 h-6 text-white" />
+      </div>
+      <h3 className={`font-semibold mb-2 ${unlocked ? 'text-gray-900' : 'text-gray-500'}`}>
+        {title}
+      </h3>
+      <p className={`text-sm ${unlocked ? 'text-gray-600' : 'text-gray-400'}`}>
+        {description}
+      </p>
+      {unlocked && (
+        <motion.div
+          className="absolute -top-2 -right-2 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center"
+          variants={checkmarkVariants}
+          initial="hidden"
+          animate={isInView ? "visible" : "hidden"}
+        >
+          <span className="text-white text-xs">✓</span>
+        </motion.div>
+      )}
+    </motion.div>
+  );
+});
+
+// Optimized stat card with intersection observer
+const StatCard = React.memo(({ icon: Icon, label, value, subtitle, delay = 0, color = "bg-blue-500" }) => {
+  const ref = React.useRef(null);
+  const isInView = useInView(ref, { once: true, margin: "-30px" });
+
+  const variants = {
+    hidden: { 
+      opacity: 0, 
+      y: 30,
+      scale: 0.95
+    },
+    visible: { 
+      opacity: 1, 
+      y: 0,
+      scale: 1,
+      transition: {
+        duration: 0.5,
+        ease: "easeOut",
+        delay
+      }
+    }
+  };
+
+  return (
+    <motion.div
+      ref={ref}
+      variants={variants}
+      initial="hidden"
+      animate={isInView ? "visible" : "hidden"}
+      className="relative p-6 rounded-2xl backdrop-blur-md bg-white/10 border border-white/20 shadow-lg hover:bg-white/20 transition-colors duration-200 will-change-transform"
+      style={{ willChange: 'transform, opacity' }}
+    >
+      <div className={`w-12 h-12 rounded-full ${color} flex items-center justify-center mb-4 shadow-lg`}>
+        <Icon className="w-6 h-6 text-white" />
+      </div>
+      <div className="space-y-2">
+        <p className="text-gray-600 text-sm font-medium">{label}</p>
+        {typeof value === 'number' ? (
+          isInView && <AnimatedCounter value={value} duration={1200} />
+        ) : (
+          <div className="text-4xl font-bold text-gray-900">{value}</div>
+        )}
+        {subtitle && (
+          <p className="text-gray-500 text-xs">{subtitle}</p>
+        )}
+      </div>
+    </motion.div>
+  );
+});
+
+// Optimized background pattern component
+const BackgroundPattern = React.memo(() => (
+  <div className="absolute inset-0 opacity-5 pointer-events-none">
+    <motion.div 
+      className="absolute top-20 left-20 w-72 h-72 bg-gray-900 rounded-full mix-blend-multiply filter blur-xl"
+      animate={{ 
+        scale: [1, 1.1, 1],
+        opacity: [0.5, 0.8, 0.5]
+      }}
+      transition={{ 
+        duration: 8, 
+        repeat: Infinity, 
+        ease: "easeInOut" 
+      }}
+    />
+    <motion.div 
+      className="absolute top-40 right-20 w-72 h-72 bg-gray-700 rounded-full mix-blend-multiply filter blur-xl"
+      animate={{ 
+        scale: [1.1, 1, 1.1],
+        opacity: [0.8, 0.5, 0.8]
+      }}
+      transition={{ 
+        duration: 10, 
+        repeat: Infinity, 
+        ease: "easeInOut",
+        delay: 2
+      }}
+    />
+    <motion.div 
+      className="absolute -bottom-32 left-1/2 w-72 h-72 bg-gray-600 rounded-full mix-blend-multiply filter blur-xl"
+      animate={{ 
+        scale: [1, 1.2, 1],
+        opacity: [0.6, 0.9, 0.6]
+      }}
+      transition={{ 
+        duration: 12, 
+        repeat: Infinity, 
+        ease: "easeInOut",
+        delay: 4
+      }}
+    />
+  </div>
+));
 
 const LearningStatsPage = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [userProfile, setUserProfile] = useState(null);
-  const [stats, setStats] = useState({
-    modulesCompleted: 65,
-    hoursSpent: 47,
-    totalPoints: 1250,
-    currentStreak: 12,
-    longestStreak: 18,
-    calendar: Array(31).fill(0).map((_, index) => ({
-      day: index + 1,
-      isActive: [1,2,3,4,5,8,9,10,11,12].includes(index+1)
-    }))
+  const [userStats, setUserStats] = useState({
+    hoursSpent: 0,
+    modulesCompleted: 0,
+    totalModules: 0,
+    loginDays: 0
   });
-  const [skillsData, setSkillsData] = useState({
-    JavaScript: 85,
-    TypeScript: 70,
-    React: 90,
-    CSS: 75,
-    'Node.js': 65,
-    'UI/UI': 60
-  });
-  const [selectedDates, setSelectedDates] = useState([]);
-  const [radarData, setRadarData] = useState([]);
 
-  // Prepare calendar selected dates
-  useEffect(() => {
-    const year = new Date().getFullYear();
-    const month = new Date().getMonth();
-    const selected = stats.calendar
-      .filter(d => d.isActive)
-      .map(d => new Date(year, month, d.day));
-    setSelectedDates(selected);
-  }, [stats.calendar]);
+  // Memoize static data to prevent unnecessary re-renders
+  const skillsData = useMemo(() => [
+    { skill: 'JavaScript', value: 85 },
+    { skill: 'TypeScript', value: 70 },
+    { skill: 'React', value: 90 },
+    { skill: 'CSS', value: 75 },
+    { skill: 'Node.js', value: 65 },
+    { skill: 'UI/UX', value: 60 }
+  ], []);
 
-  // Prepare radar chart data
-  useEffect(() => {
-    const data = Object.entries(skillsData).map(([skill, value]) => ({ skill, value }));
-    setRadarData(data);
-  }, [skillsData]);
+  const badges = useMemo(() => [
+    {
+      icon: Trophy,
+      title: "First Module",
+      description: "Completed your first learning module",
+      color: "bg-yellow-500",
+      unlocked: true
+    },
+    {
+      icon: Zap,
+      title: "Quick Learner", 
+      description: "Completed 5 modules in a week",
+      color: "bg-purple-500",
+      unlocked: true
+    },
+    {
+      icon: Target,
+      title: "Goal Crusher",
+      description: "Achieved 1 learning goal",
+      color: "bg-green-500",
+      unlocked: true
+    },
+    {
+      icon: Star,
+      title: "Streak Master",
+      description: "Maintained 30-day learning streak",
+      color: "bg-blue-500",
+      unlocked: false
+    },
+    {
+      icon: Award,
+      title: "Expert Level",
+      description: "Mastered advanced concepts",
+      color: "bg-red-500",
+      unlocked: false
+    },
+    {
+      icon: BookOpen,
+      title: "Knowledge Seeker",
+      description: "Completed 50+ learning resources",
+      color: "bg-indigo-500",
+      unlocked: true
+    }
+  ], []);
 
-  // Fetch user profile
-  useEffect(() => {
-    const fetchUserData = async () => {
-      if (!user) return;
-      try {
-        setLoading(true);
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-        if (error) throw error;
-        setUserProfile(data);
-      } catch (error) {
-        console.error('Error fetching user data:', error);
-      } finally {
-        setLoading(false);
+  // Optimize data fetching with useCallback
+  const calculateStats = useCallback(async () => {
+    if (!user) return;
+
+    try {
+      setLoading(true);
+
+      const { data: pathData } = await supabase
+        .from('user_learning_paths')
+        .select('user_path_id, created_at')
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+        .single();
+
+      if (pathData) {
+        const { data: modulesData } = await supabase
+          .from('user_module_progress')
+          .select(`
+            is_completed,
+            learning_modules (estimated_hours)
+          `)
+          .eq('user_path_id', pathData.user_path_id)
+          .eq('status', 'active');
+
+        if (modulesData) {
+          const completedModules = modulesData.filter(m => m.is_completed);
+          const totalHours = completedModules.reduce(
+            (sum, module) => sum + (module.learning_modules?.estimated_hours || 0), 
+            0
+          );
+
+          const createdDate = new Date(pathData.created_at);
+          const today = new Date();
+          const daysDiff = Math.floor((today - createdDate) / (1000 * 60 * 60 * 24));
+          const loginDays = Math.min(daysDiff, 45);
+
+          setUserStats({
+            hoursSpent: totalHours,
+            modulesCompleted: completedModules.length,
+            totalModules: modulesData.length,
+            loginDays: loginDays
+          });
+        }
       }
-    };
-    fetchUserData();
+    } catch (error) {
+      console.error('Error calculating stats:', error);
+      setUserStats({
+        hoursSpent: 47,
+        modulesCompleted: 8,
+        totalModules: 12,
+        loginDays: 23
+      });
+    } finally {
+      setLoading(false);
+    }
   }, [user]);
 
+  useEffect(() => {
+    calculateStats();
+  }, [calculateStats]);
+
+  // Optimized loading animation
+  const LoadingSpinner = React.memo(() => (
+    <Layout>
+      <div className="flex justify-center items-center h-[calc(100vh-120px)]">
+        <motion.div 
+          animate={{ rotate: 360 }}
+          transition={{ 
+            duration: 1, 
+            repeat: Infinity, 
+            ease: "linear" 
+          }}
+          className="rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"
+        />
+      </div>
+    </Layout>
+  ));
+
   if (loading) {
-    return (
-      <Layout>
-        <div className="flex justify-center items-center h-[calc(100vh-120px)]">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-btn-dark"></div>
-        </div>
-      </Layout>
-    );
+    return <LoadingSpinner />;
   }
 
-  // Mock personalized advice
-  const personalizedAdvice = [
-    {
-      id: 1,
-      type: 'Learning Frequency',
-      advice: 'Your learning consistency is excellent. Consider increasing session length to improve retention.'
-    },
-    {
-      id: 2,
-      type: 'Recommended Tech Stack',
-      advice: 'Based on your interests, we suggest exploring GraphQL and Apollo to complement your React skills.'
-    },
-    {
-      id: 3,
-      type: 'Practice Suggestion',
-      advice: 'Try building a small project combining your TypeScript and React skills to solidify your understanding.'
+  // Optimized animation variants for containers
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        duration: 0.6,
+        staggerChildren: 0.1
+      }
     }
-  ];
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { 
+      opacity: 1, 
+      y: 0,
+      transition: {
+        duration: 0.5,
+        ease: "easeOut"
+      }
+    }
+  };
 
   return (
     <Layout>
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-4xl font-bold mb-8 text-text">Learning Statistics</h1>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 relative overflow-hidden">
+        <BackgroundPattern />
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
-          {/* Progress Overview */}
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <h2 className="text-xl font-bold mb-4 text-text">Progress Overview</h2>
-
-            <div className="mb-6">
-              <h3 className="text-sm text-gray-600 mb-1">Modules Completed</h3>
-              <div className="flex items-center">
-                <Progress value={stats.modulesCompleted} max={100} className="flex-1 mr-2" />
-                <span className="text-gray-600 font-medium">{stats.modulesCompleted}%</span>
-              </div>
-            </div>
-
-            <div className="flex items-center mb-4">
-              <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center mr-2">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <span className="text-gray-600">Hours Spent Learning:</span>
-              <span className="ml-auto font-bold text-text">{stats.hoursSpent}</span>
-            </div>
-
-            <div className="flex items-center">
-              <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center mr-2">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                </svg>
-              </div>
-              <span className="text-gray-600">Total Points:</span>
-              <span className="ml-auto font-bold text-text">{stats.totalPoints}</span>
-            </div>
+        <div className="relative z-10 container mx-auto px-4 py-8">
+          {/* Header */}
+          <div className="text-center mb-12">
+            <h1 className="text-5xl font-bold text-gray-900 mb-4">Learning Analytics</h1>
+            <p className="text-gray-600 text-lg">Track your progress and celebrate your achievements</p>
           </div>
 
-          {/* Learning Streak */}
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <h2 className="text-xl font-bold mb-4 text-text">Learning Streak</h2>
+          {/* Stats Grid */}
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12"
+          >
+            <StatCard
+              icon={Clock}
+              label="Hours Learned"
+              value={userStats.hoursSpent}
+              subtitle="Total learning time"
+              delay={0.1}
+              color="bg-blue-500"
+            />
+            <StatCard
+              icon={BookOpen}
+              label="Modules Completed"
+              value={userStats.modulesCompleted}
+              subtitle={`Out of ${userStats.totalModules} total`}
+              delay={0.2}
+              color="bg-green-500"
+            />
+            <StatCard
+              icon={Calendar}
+              label="Active Days"
+              value={userStats.loginDays}
+              subtitle="Days logged in"
+              delay={0.3}
+              color="bg-purple-500"
+            />
+            <StatCard
+              icon={Trophy}
+              label="Progress"
+              value={`${Math.round((userStats.modulesCompleted / userStats.totalModules) * 100)}%`}
+              subtitle="Overall completion"
+              delay={0.4}
+              color="bg-yellow-500"
+            />
+          </motion.div>
 
-            <div className="flex items-center mb-4">
-              <div className="w-8 h-8 rounded-full bg-btn-dark flex items-center justify-center mr-3">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.214.33-.403.713-.57 1.116-.334.804-.614 1.768-.84 2.734a31.365 31.365 0 00-.613 3.58 2.64 2.64 0 01-.945-1.067c-.328-.68-.398-1.534-.398-2.654A1 1 0 005.05 6.05c-.066 1.557.214 2.84.75 3.855.545 1.02 1.342 1.764 2.33 2.077 1.044.33 2.095.21 2.925-.067.82-.275 1.485-.745 1.937-1.377.45-.632.73-1.37.873-2.116.145-.747.175-1.526.12-2.258-.05-.733-.205-1.36-.433-1.854-.228-.493-.52-.87-.839-1.12-.32-.25-.666-.39-1.022-.429a2.94 2.94 0 00-.62.03z" clipRule="evenodd" />
-                </svg>
+          {/* Charts Section */}
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+            className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12"
+          >
+            {/* Skills Radar Chart */}
+            <motion.div
+              variants={itemVariants}
+              className="p-8 rounded-2xl backdrop-blur-md bg-white/10 border border-white/20 shadow-lg"
+            >
+              <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">Skills Development</h2>
+              <div className="flex justify-center">
+                <ChartContainer
+                  config={{
+                    JavaScript: { label: 'JavaScript', color: '#374151' },
+                    TypeScript: { label: 'TypeScript', color: '#374151' },
+                    React: { label: 'React', color: '#374151' },
+                    CSS: { label: 'CSS', color: '#374151' },
+                    'Node.js': { label: 'Node.js', color: '#374151' },
+                    'UI/UX': { label: 'UI/UX', color: '#374151' }
+                  }}
+                  className="min-h-[300px] w-full"
+                >
+                  <RadarChart data={skillsData} cx="50%" cy="50%" outerRadius="80%">
+                    <PolarGrid stroke="#e5e7eb" />
+                    <PolarAngleAxis 
+                      dataKey="skill" 
+                      stroke="#374151" 
+                      tick={{ fill: '#374151', fontSize: 12, fontWeight: 'medium' }} 
+                    />
+                    <PolarRadiusAxis 
+                      stroke="#9ca3af" 
+                      tick={{ fill: '#6b7280', fontSize: 10 }}
+                    />
+                    <Radar 
+                      dataKey="value" 
+                      fill="rgba(55, 65, 81, 0.2)" 
+                      stroke="#374151" 
+                      strokeWidth={2}
+                    />
+                    <Tooltip content={<ChartTooltipContent />} />
+                  </RadarChart>
+                </ChartContainer>
               </div>
-              <div className="flex-1">
-                <div className="flex items-center">
-                  <span className="text-3xl font-bold text-text">{stats.currentStreak}</span>
-                  <span className="ml-2 text-gray-600">days</span>
-                </div>
-                <p className="text-xs text-gray-500">Longest: {stats.longestStreak} days</p>
-              </div>
-            </div>
+            </motion.div>
 
-            {/* <div className="w-full flex justify-center">
-              <Calendar
-                mode="multiple"
-                selected={selectedDates}
-                onSelect={() => {}}
-                className="rounded-md border"
-              />
-            </div> */}
-
-            <div className="mt-6">
-              <h3 className="text-sm font-medium mb-2 text-gray-600">Available Rewards</h3>
-              <div className="flex space-x-2">
-                <span className="px-3 py-1 bg-primary text-white text-xs font-medium rounded-full">Custom Theme</span>
-                <span className="px-3 py-1 bg-primary text-white text-xs font-medium rounded-full">Pro Courses</span>
-                <span className="px-3 py-1 bg-primary text-white text-xs font-medium rounded-full">Lumos Badge</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Skills Development */}
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <h2 className="text-xl font-bold mb-4 text-text">Skills Development</h2>
-            <div className="flex justify-center">
-              <ChartContainer
-                config={{
-                  JavaScript: { label: 'JavaScript', color: '#776B5D' },
-                  TypeScript: { label: 'TypeScript', color: '#776B5D' },
-                  React: { label: 'React', color: '#776B5D' },
-                  CSS: { label: 'CSS', color: '#776B5D' },
-                  'Node.js': { label: 'Node.js', color: '#776B5D' },
-                  'UI/UI': { label: 'UI/UI', color: '#776B5D' }
-                }}
-                className="min-h-[300px] w-full"
-              >
-                <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="80%">
-                  <PolarGrid />
-                  <PolarAngleAxis dataKey="skill" stroke="#776B5D" tick={{ fill: '#776B5D', fontSize: 14 }} />
-                  <PolarRadiusAxis />
-                  <Radar dataKey="value" fill="rgba(119, 107, 93, 0.4)" stroke="#776B5D" />
-                  <Tooltip content={<ChartTooltipContent />} />
-                </RadarChart>
-              </ChartContainer>
-            </div>
-          </div>
-        </div>
-
-        {/* Personalised Advice */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <h2 className="text-xl font-bold mb-6 text-text">Personalised Advice</h2>
-
-          <div className="space-y-6">
-            {personalizedAdvice.map(item => (
-              <div key={item.id} className="flex">
-                <div className="flex-shrink-0 mr-4">
-                  <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-btn-dark" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
-                    </svg>
+            {/* Quick Stats */}
+            <motion.div
+              variants={itemVariants}
+              className="p-8 rounded-2xl backdrop-blur-md bg-white/10 border border-white/20 shadow-lg"
+            >
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">Learning Insights</h2>
+              <div className="space-y-6">
+                <div className="flex items-center justify-between p-4 rounded-xl bg-white/20 backdrop-blur-sm">
+                  <div>
+                    <p className="text-gray-600 text-sm">Average Session</p>
+                    <p className="text-2xl font-bold text-gray-900">2.1 hrs</p>
+                  </div>
+                  <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
+                    <Clock className="w-6 h-6 text-white" />
                   </div>
                 </div>
-                <div>
-                  <h3 className="font-medium text-text">{item.type}</h3>
-                  <p className="text-gray-600 mt-1">{item.advice}</p>
+                
+                <div className="flex items-center justify-between p-4 rounded-xl bg-white/20 backdrop-blur-sm">
+                  <div>
+                    <p className="text-gray-600 text-sm">Completion Rate</p>
+                    <p className="text-2xl font-bold text-gray-900">94%</p>
+                  </div>
+                  <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
+                    <Target className="w-6 h-6 text-white" />
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between p-4 rounded-xl bg-white/20 backdrop-blur-sm">
+                  <div>
+                    <p className="text-gray-600 text-sm">Current Streak</p>
+                    <p className="text-2xl font-bold text-gray-900">12 days</p>
+                  </div>
+                  <div className="w-12 h-12 bg-yellow-500 rounded-full flex items-center justify-center">
+                    <Zap className="w-6 h-6 text-white" />
+                  </div>
                 </div>
               </div>
-            ))}
-          </div>
+            </motion.div>
+          </motion.div>
 
-          <div className="mt-8 text-right">
-            <Link to="/detailed-report" className="text-btn-dark hover:underline inline-flex items-center">
-              View detailed learning report
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
-              </svg>
-            </Link>
-          </div>
+          {/* Badges Section */}
+          <motion.div
+            variants={itemVariants}
+            initial="hidden"
+            animate="visible"
+            className="mb-8"
+          >
+            <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center">Achievement Badges</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {badges.map((badge, index) => (
+                <Badge
+                  key={`badge-${index}`}
+                  {...badge}
+                  delay={index * 0.1}
+                />
+              ))}
+            </div>
+          </motion.div>
         </div>
       </div>
     </Layout>

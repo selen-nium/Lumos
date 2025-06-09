@@ -10,6 +10,8 @@ import LearningStatsPage from './pages/LearningStatsPage';
 import CommunityPage from './pages/CommunityPage';
 import ProfilePage from './pages/ProfilePage';
 import { ProtectedRoute, PublicRoute } from './components/ProtectedRoutes';
+import 'react-vertical-timeline-component/style.min.css';
+import './index.css'
 
 function App() {
   return (
