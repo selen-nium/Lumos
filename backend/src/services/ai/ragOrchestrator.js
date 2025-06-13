@@ -2,6 +2,7 @@ import llmService from '../core/llmService.js';
 import promptService from './promptService.js';
 import embeddingService from '../embeddingService.js';
 import userProfileService from '../userProfileService.js';
+import learningPathTemplateService from '../learningPathTemplateService.js';
 import { schemas } from '../../schemas/roadmapSchema.js'
 
 class RAGOrchestrator {
@@ -44,19 +45,45 @@ class RAGOrchestrator {
    */
   async generateInitialRoadmap(userId, profileData) {
     try {
-      console.log("🗺️ Generating initial roadmap with schema for user:", userId);
+      console.log("🗺️ Generating initial roadmap with template search for user:", userId);
       
       const userContext = await userProfileService.createUserContext(userId);
-      console.log("📝 Generating custom roadmap with schema validation...");
       
-      const roadmap = await this.generateCustomRoadmapWithSchema(userContext, profileData);
+      // Search for similar templates first
+      console.log("🔍 Searching for similar learning path templates...");
+      const similarTemplates = await learningPathTemplateService.findSimilarTemplates(
+        userContext, 
+        3 // Get top 3 templates
+      );
       
-      // Remove redundant modules based on user's existing skills
-      const finalRoadmap = this.removeRedundantModules(roadmap, userContext.skills);
+      if (similarTemplates.length > 0) {
+        console.log(`Found ${similarTemplates.length} similar templates`);
+        
+        // Use the most similar template
+        const bestTemplate = similarTemplates[0];
+        console.log(`🎯 Using template: "${bestTemplate.template_name}" (similarity: ${bestTemplate.similarity?.toFixed(3)})`);
+        
+        // Customise the template for user
+        const customizedRoadmap = await learningPathTemplateService.customizeTemplate(
+          bestTemplate, 
+          userContext
+        );
+        
+        console.log("✅ Template customized successfully");
+        return { roadmap: customizedRoadmap };
+      }
       
-      console.log("✅ Initial roadmap generated successfully with schema");
+      // No similar templates found, generate new roadmap
+      console.log("🤖 No similar templates found, generating new roadmap with AI...");
+      const newRoadmap = await this.generateCustomRoadmapWithSchema(userContext, profileData);
       
-      return { roadmap: finalRoadmap };
+      //Save the new roadmap as a template for future users
+      console.log("💾 Saving new roadmap as template for future reuse...");
+      await learningPathTemplateService.saveAsTemplate(newRoadmap, userContext);
+      
+      console.log("✅ New roadmap generated and saved as template");
+      return { roadmap: newRoadmap };
+      
     } catch (error) {
       console.error('❌ Initial roadmap generation error:', error);
       throw error;
@@ -68,14 +95,15 @@ class RAGOrchestrator {
    */
   async generateCustomRoadmapWithSchema(userContext, options = {}) {
     try {
-      console.log("🎨 Generating custom roadmap with schema validation...");
+      console.log("🎨 Generating custom roadmap with AI (no templates matched)...");
       
       const systemPrompt = promptService.getRoadmapGenerationPrompt(userContext);
       
       const query = `Generate a personalized learning roadmap for me. 
 I want to focus on: ${userContext.goalsText}. 
 My current skills include: ${userContext.skillsText}. 
-I can dedicate ${userContext.timeAvailable} hours per week to learning.`;
+I can dedicate ${userContext.timeAvailable} hours per week to learning.
+Experience level: ${userContext.experienceLevel}`;
       
       // Use schema-based generation
       const result = await llmService.generateRoadmapWithSchema(
@@ -90,13 +118,7 @@ I can dedicate ${userContext.timeAvailable} hours per week to learning.`;
       
       const roadmap = result.parsed;
       
-      console.log("🔍 RAW AI RESPONSE WITH SCHEMA:", {
-        finishReason: result.finishReason,
-        tokensUsed: result.usage?.total_tokens,
-        schemaUsed: result.schemaUsed
-      });
-      
-      console.log("🔍 ROADMAP STRUCTURE WITH SCHEMA:", {
+      console.log("🔍 AI-generated roadmap structure:", {
         title: roadmap.roadmap_title,
         modulesCount: roadmap.modules?.length || 0,
         hasValidStructure: !!(roadmap.modules && Array.isArray(roadmap.modules)),
@@ -104,44 +126,15 @@ I can dedicate ${userContext.timeAvailable} hours per week to learning.`;
         estimatedWeeks: roadmap.estimated_completion_weeks
       });
 
-      // Debug each module's content in detail
-      if (roadmap.modules && Array.isArray(roadmap.modules)) {
-        roadmap.modules.forEach((module, i) => {
-          console.log(`🔍 MODULE ${i + 1} WITH SCHEMA:`, {
-            name: module.module_name,
-            resourcesCount: module.resources?.length || 0,
-            tasksCount: module.tasks?.length || 0,
-            difficulty: module.difficulty,
-            estimatedHours: module.estimated_hours
-          });
-          
-          // Log actual resources
-          if (module.resources && Array.isArray(module.resources)) {
-            console.log(`📚 Resources for ${module.module_name}:`);
-            module.resources.forEach((resource, j) => {
-              console.log(`  ${j + 1}. ${resource.resource_title} (${resource.resource_type}) - ${resource.estimated_time_minutes}min`);
-            });
-          }
-          
-          // Log actual tasks
-          if (module.tasks && Array.isArray(module.tasks)) {
-            console.log(`✏️ Tasks for ${module.module_name}:`);
-            module.tasks.forEach((task, j) => {
-              console.log(`  ${j + 1}. ${task.task_title} (${task.task_type}) - ${task.estimated_time_minutes}min`);
-            });
-          }
-        });
-      }
-      
       // Add metadata
-      roadmap.generationMethod = 'custom_with_schema';
+      roadmap.generationMethod = 'ai_generated_new';
       roadmap.userContext = {
         skills: userContext.skillsText,
         goals: userContext.goalsText,
         experienceLevel: userContext.experienceLevel
       };
       
-      console.log("✅ Custom roadmap generated with schema validation");
+      console.log("✅ Custom roadmap generated with AI");
       return roadmap;
       
     } catch (error) {
@@ -149,6 +142,38 @@ I can dedicate ${userContext.timeAvailable} hours per week to learning.`;
       throw error;
     }
   }
+
+  async getRoadmapGenerationStats() {
+    try {
+      const templateStats = await learningPathTemplateService.healthCheck();
+      
+      return {
+        totalTemplates: templateStats.templatesCount || 0,
+        generationMethods: {
+          template_reuse: 'Available',
+          ai_generation: 'Available',
+          hybrid_approach: 'Active'
+        },
+        averageGenerationTime: '2-5 seconds (with templates)',
+        fallbackGenerationTime: '15-30 seconds (AI generation)',
+        timestamp: new Date().toISOString()
+      };
+    } catch (error) {
+      console.error('Error getting roadmap generation stats:', error);
+      return null;
+    }
+  }
+
+  async initializeTemplates() {
+    try {
+      console.log("🌱 Initializing learning path templates...");
+      await learningPathTemplateService.seedInitialTemplates();
+      console.log("✅ Templates initialized successfully");
+    } catch (error) {
+      console.error('❌ Error initializing templates:', error);
+    }
+  }
+
 
   /**
    * Process roadmap modifications using schema
@@ -546,10 +571,12 @@ I can dedicate ${userContext.timeAvailable} hours per week to learning.`;
       const checks = {
         llmService: await llmService.healthCheck(),
         embeddingService: 'available',
+        templateService: await learningPathTemplateService.healthCheck(),
         timestamp: new Date().toISOString()
       };
 
-      const allHealthy = checks.llmService.status === 'healthy';
+      const allHealthy = checks.llmService.status === 'healthy' && 
+                        checks.templateService.status === 'healthy';
 
       return {
         status: allHealthy ? 'healthy' : 'degraded',
@@ -557,9 +584,14 @@ I can dedicate ${userContext.timeAvailable} hours per week to learning.`;
         capabilities: {
           chatGeneration: checks.llmService.status === 'healthy',
           roadmapGeneration: checks.llmService.status === 'healthy',
+          templateSearch: checks.templateService.status === 'healthy',
           schemaValidation: checks.llmService.structuredOutputsSupported || false,
           contextRetrieval: true,
           progressAnalysis: checks.llmService.status === 'healthy'
+        },
+        performance: {
+          templatesAvailable: checks.templateService.templatesCount || 0,
+          fastGeneration: checks.templateService.templatesCount > 0
         }
       };
     } catch (error) {

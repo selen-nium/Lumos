@@ -1,5 +1,6 @@
-import sql from '../database/db.js';
+// import sql from '../database/db.js';
 import OpenAI from 'openai';
+import supabaseService from './core/supabaseService.js';
 
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY
@@ -10,6 +11,7 @@ class EmbeddingService {
         this.embeddingModel = 'text-embedding-3-small';
         this.embeddingDimensions = 1536;
         this.vectorIndexesCreated = false;
+        this.db = supabaseService;
     }
 
     /**
@@ -76,29 +78,28 @@ class EmbeddingService {
     /**
      * Find similar modules using vector similarity
      */
-    async findSimilarModules(moduleData, options = {}) {
-        const {
-            similarityThreshold = 0.8,
-            limit = 10
-        } = options;
-
+    async findSimilarModules(queryText, options = {}) {
         try {
-            // Generate embedding for the new module
-            const queryEmbedding = await this.generateModuleEmbedding(moduleData);
+            const queryEmbedding = await this.textToEmbedding(queryText);
             if (!queryEmbedding) return [];
 
             const embeddingStr = '[' + queryEmbedding.join(',') + ']';
 
-            const results = await sql`
-                SELECT * FROM find_similar_modules(
-                    ${embeddingStr}::vector,
-                    ${similarityThreshold},
-                    ${limit}
-                )
-            `;
+            // Use Supabase RPC function if available, otherwise return empty array
+            try {
+                const { data: results, error } = await this.db.serviceClient
+                    .rpc('find_similar_modules', {
+                        query_embedding: embeddingStr,
+                        similarity_threshold: options.similarityThreshold || 0.8,
+                        match_limit: options.limit || 10
+                    });
 
-            console.log(`🔍 Found ${results.length} similar modules`);
-            return results;
+                if (error) throw error;
+                return results || [];
+            } catch (rpcError) {
+                console.warn('Similar modules search not available:', rpcError.message);
+                return [];
+            }
         } catch (error) {
             console.error('Error finding similar modules:', error);
             return [];
@@ -177,18 +178,17 @@ class EmbeddingService {
 
             const embeddingStr = '[' + embedding.join(',') + ']';
             
-            await sql`
-                UPDATE learning_modules 
-                SET content_embedding = ${embeddingStr}::vector,
-                    updated_at = NOW()
-                WHERE module_id = ${moduleId}
-            `;
+            const { error } = await this.db.serviceClient
+                .from('learning_modules')
+                .update({ 
+                    content_embedding: embeddingStr,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('module_id', moduleId);
+
+            if (error) throw error;
 
             console.log(`✅ Stored embedding for module ${moduleId}`);
-            
-            // Create vector indexes if this is one of the first embeddings
-            await this.ensureVectorIndexes();
-            
             return true;
         } catch (error) {
             console.error('Error storing module embedding:', error);
@@ -347,24 +347,24 @@ class EmbeddingService {
     /**
      * Get statistics about embeddings in the database
      */
-    async getEmbeddingStats() {
-        try {
-            const stats = await sql`
-                SELECT 
-                    (SELECT COUNT(*) FROM learning_modules) as total_modules,
-                    (SELECT COUNT(*) FROM learning_modules WHERE content_embedding IS NOT NULL) as modules_with_embeddings,
-                    (SELECT COUNT(*) FROM learning_resources) as total_resources,
-                    (SELECT COUNT(*) FROM learning_resources WHERE content_embedding IS NOT NULL) as resources_with_embeddings,
-                    (SELECT COUNT(*) FROM hands_on_tasks) as total_tasks,
-                    (SELECT COUNT(*) FROM hands_on_tasks WHERE content_embedding IS NOT NULL) as tasks_with_embeddings
-            `;
+    // async getEmbeddingStats() {
+    //     try {
+    //         const stats = await sql`
+    //             SELECT 
+    //                 (SELECT COUNT(*) FROM learning_modules) as total_modules,
+    //                 (SELECT COUNT(*) FROM learning_modules WHERE content_embedding IS NOT NULL) as modules_with_embeddings,
+    //                 (SELECT COUNT(*) FROM learning_resources) as total_resources,
+    //                 (SELECT COUNT(*) FROM learning_resources WHERE content_embedding IS NOT NULL) as resources_with_embeddings,
+    //                 (SELECT COUNT(*) FROM hands_on_tasks) as total_tasks,
+    //                 (SELECT COUNT(*) FROM hands_on_tasks WHERE content_embedding IS NOT NULL) as tasks_with_embeddings
+    //         `;
 
-            return stats[0];
-        } catch (error) {
-            console.error('Error getting embedding stats:', error);
-            return null;
-        }
-    }
+    //         return stats[0];
+    //     } catch (error) {
+    //         console.error('Error getting embedding stats:', error);
+    //         return null;
+    //     }
+    // }
 
     // ========================================
     // HELPER METHODS
@@ -428,18 +428,13 @@ class EmbeddingService {
             const testEmbedding = await this.textToEmbedding("test embedding");
             
             // Test database connection
-            const dbTest = await sql`SELECT 1 as test`;
-            
-            // Get embedding statistics
-            const stats = await this.getEmbeddingStats();
+            const dbHealth = await this.db.healthCheck();
             
             return {
                 status: 'healthy',
                 embeddingModel: this.embeddingModel,
                 embeddingDimensions: testEmbedding.length,
-                databaseConnection: dbTest.length > 0,
-                stats: stats,
-                vectorIndexesCreated: this.vectorIndexesCreated,
+                databaseConnection: dbHealth.status === 'healthy',
                 timestamp: new Date().toISOString()
             };
         } catch (error) {

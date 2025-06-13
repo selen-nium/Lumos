@@ -1,10 +1,22 @@
 import dotenv from 'dotenv';
-dotenv.config();
-
 import { createClient } from '@supabase/supabase-js';
+if (!process.env.SUPABASE_URL) {
+  dotenv.config();
+}
 
 class SupabaseService {
   constructor() {
+
+    if (!process.env.SUPABASE_URL) {
+      throw new Error('SUPABASE_URL environment variable is required');
+    }
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      throw new Error('SUPABASE_SERVICE_ROLE_KEY environment variable is required');
+    }
+
+    console.log('🔗 Initializing Supabase clients...');
+    console.log('📍 Supabase URL:', process.env.SUPABASE_URL.substring(0, 30) + '...');
+
     // Service role client (bypasses RLS)
     this.serviceClient = createClient(
       process.env.SUPABASE_URL,

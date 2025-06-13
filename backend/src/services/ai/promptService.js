@@ -57,7 +57,7 @@ TASK GUIDELINES:
 - Range from 30-180 minutes per task
 
 Focus on practical, industry-relevant skills that directly support their career goals. Consider their time constraints and create a realistic timeline.
-Before finalizing: Remove or revise ny modules that cover topics the user already knows well.
+Before finalizing: Remove or revise any modules that cover topics the user already knows well.
 `;
   }
 
