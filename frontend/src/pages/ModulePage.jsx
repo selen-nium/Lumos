@@ -25,110 +25,6 @@ import {
 import Lottie from "react-lottie-player";
 import confettiAnimation from "../assets/animation/confetti.json";
 
-// Helper functions
-// const generateDefaultDescription = (moduleName) => {
-//   if (!moduleName) return "Learn the fundamentals of this topic";
-  
-//   const descriptions = {
-//     'ui/ux': `Understand the principles of user interface design|Learn user experience research methods|Practice creating wireframes and prototypes|Study color theory and typography`,
-//     'html': `Master HTML5 semantic elements|Learn proper document structure|Understand accessibility best practices|Practice building responsive layouts`,
-//     'css': `Master CSS selectors and properties|Learn responsive design techniques|Understand CSS Grid and Flexbox|Practice modern CSS features`,
-//     'javascript': `Understand JavaScript fundamentals|Learn DOM manipulation|Master asynchronous programming|Practice with ES6+ features`,
-//     'react': `Learn React component architecture|Understand state management|Master React hooks and lifecycle|Build interactive applications`,
-//     'node': `Understand server-side JavaScript|Learn to build REST APIs|Master npm and package management|Practice database integration`,
-//     'database': `Learn database design principles|Understand SQL fundamentals|Practice data modeling|Master database optimization`,
-//     'devops': `Learn CI/CD pipelines|Understand containerization with Docker|Master cloud deployment|Practice infrastructure automation`,
-//     'vue': `Learn Vue.js component system|Understand reactive data binding|Master Vue CLI and ecosystem|Build single-page applications`,
-//     'design': `Study design principles and theory|Learn about visual hierarchy|Practice with design tools|Understand user-centered design`
-//   };
-  
-//   const name = moduleName.toLowerCase();
-//   for (const [key, desc] of Object.entries(descriptions)) {
-//     if (name.includes(key)) return desc;
-//   }
-  
-//   return `Learn ${moduleName} fundamentals|Understand core concepts|Practice with hands-on exercises|Apply knowledge to real projects`;
-// };
-
-// const processResources = (resources) => {
-//   if (!Array.isArray(resources)) return [];
-  
-//   return resources.map((resource, index) => {
-//     if (typeof resource === 'object' && resource !== null) {
-//       return {
-//         id: resource.id || index,
-//         title: resource.title || resource.resource_title || `Resource ${index + 1}`,
-//         url: resource.url || '#',
-//         resource_type: resource.resource_type || resource.type || 'article',
-//         estimated_time_minutes: resource.estimated_time_minutes || 30
-//       };
-//     }
-    
-//     if (typeof resource === 'string') {
-//       return {
-//         id: index,
-//         title: resource,
-//         url: generateResourceUrl(resource),
-//         resource_type: detectResourceType(resource),
-//         estimated_time_minutes: estimateTimeFromTitle(resource)
-//       };
-//     }
-    
-//     return {
-//       id: index,
-//       title: `Resource ${index + 1}`,
-//       url: '#',
-//       resource_type: 'article',
-//       estimated_time_minutes: 30
-//     };
-//   });
-// };
-
-const generateResourceUrl = (resourceTitle) => {
-  const title = resourceTitle.toLowerCase();
-  
-  if (title.includes('youtube')) {
-    const searchTerm = resourceTitle.replace(/youtube\s+tutorials?\s+on\s+/i, '').trim();
-    return `https://www.youtube.com/results?search_query=${encodeURIComponent(searchTerm)}`;
-  }
-  
-  if (title.includes('online course')) {
-    const searchTerm = resourceTitle.replace(/online\s+course:\s*/i, '').trim();
-    return `https://www.coursera.org/search?query=${encodeURIComponent(searchTerm)}`;
-  }
-  
-  if (title.includes('documentation')) {
-    const searchTerm = resourceTitle.replace(/documentation:\s*/i, '').trim();
-    return `https://developer.mozilla.org/en-US/search?q=${encodeURIComponent(searchTerm)}`;
-  }
-  
-  if (title.includes('tutorial')) {
-    return `https://www.freecodecamp.org/learn`;
-  }
-  
-  return `https://www.google.com/search?q=${encodeURIComponent(resourceTitle)}`;
-};
-
-const detectResourceType = (resourceTitle) => {
-  const title = resourceTitle.toLowerCase();
-  
-  if (title.includes('youtube') || title.includes('video')) return 'video';
-  if (title.includes('course') || title.includes('tutorial')) return 'tutorial';
-  if (title.includes('documentation') || title.includes('docs')) return 'documentation';
-  if (title.includes('article') || title.includes('blog')) return 'article';
-  
-  return 'article';
-};
-
-const estimateTimeFromTitle = (title) => {
-  const lowerTitle = title.toLowerCase();
-  if (lowerTitle.includes('course')) return 120;
-  if (lowerTitle.includes('video') || lowerTitle.includes('youtube')) return 45;
-  if (lowerTitle.includes('tutorial')) return 60;
-  if (lowerTitle.includes('documentation')) return 30;
-  return 30;
-};
-
 const ModulePage = () => {
   const { moduleId } = useParams();
   const { user } = useAuth();
@@ -152,7 +48,7 @@ const ModulePage = () => {
 
         console.log("🔍 Looking for module:", moduleId);
 
-        // Fetch the user's active learning path with modules using the new normalized structure
+        // Fetch user's active learning path with modules
         const { data: pathData, error: pathError } = await supabase
           .from('user_learning_paths')
           .select('user_path_id, path_name')
@@ -229,53 +125,34 @@ const ModulePage = () => {
               task_description,
               task_type,
               estimated_time_minutes,
-              instructions,
-              solution_url
-            ),
-            user_task_progress!left (
-              is_completed,
-              completion_date
+              instructions
             )
           `)
           .eq('module_id', moduleId)
-          .eq('user_task_progress.user_id', user.id)
           .order('sequence_order');
-        
-        // process task data
-        // Get task progress for the current user
-        const taskIds = tasksData?.map(t => t.hands_on_tasks.task_id) || [];
-        let taskProgress = [];
 
-        if (taskIds.length > 0) {
-          const { data: progressData } = await supabase
-            .from('user_task_progress')
-            .select('task_id, is_completed, completion_date')
-            .eq('user_id', user.id)
-            .in('task_id', taskIds);
-          
-          taskProgress = progressData || [];
+        //  user's task completion status
+        const { data: taskProgressData, error: taskProgressError } = await supabase
+          .from('user_task_progress')
+          .select('task_id, is_completed, completion_date')
+          .eq('user_id', user.id);
+
+        if (taskProgressError) {
+          console.warn('Error fetching task progress:', taskProgressError);
         }
 
-        // Create a progress map for quick lookup
-        const progressMap = new Map();
-        taskProgress.forEach(progress => {
-          progressMap.set(progress.task_id, progress);
-        });
+        // Create a map of task completion status
+        const taskCompletionMap = new Map();
+        if (taskProgressData) {
+          taskProgressData.forEach(progress => {
+            taskCompletionMap.set(progress.task_id, {
+              isCompleted: progress.is_completed,
+              completionDate: progress.completion_date
+            });
+          });
+        }
 
-        // ALSO UPDATE THE TASKS PROCESSING CODE:
-        // Find where you process the tasks (around line 180):
-        const processedTasks = (tasksData || []).map(t => {
-          const progress = progressMap.get(t.hands_on_tasks.task_id);
-          return {
-            ...t.hands_on_tasks,
-            sequence_order: t.sequence_order,
-            is_required: t.is_required,
-            is_completed: progress?.is_completed || false,
-            completion_date: progress?.completion_date || null
-          };
-        });
-
-        setTasks(processedTasks);
+        console.log('📊 Task completion map:', taskCompletionMap);
 
         // Process the module data
         const processedModule = {
@@ -287,21 +164,32 @@ const ModulePage = () => {
           estimated_completion_hours: moduleData.estimated_hours || 3,
           sequence_order: moduleProgressData.sequence_order,
           isCompleted: moduleProgressData.is_completed || false,
-          resources: (resourcesData || []).map(r => ({
-            ...r.learning_resources,
-            sequence_order: r.sequence_order,
-            is_required: r.is_required
-          })),
-          tasks: (tasksData || []).map(t => ({
-            ...t.hands_on_tasks,
-            sequence_order: t.sequence_order,
-            is_required: t.is_required
-          }))
         };
 
+        const processedResources = (resourcesData || []).map(r => ({
+          ...r.learning_resources,
+          sequence_order: r.sequence_order,
+          is_required: r.is_required
+        }));
+
+        const processedTasks = (tasksData || []).map(t => {
+          const taskData = t.hands_on_tasks;
+          const completion = taskCompletionMap.get(taskData.task_id) || {};
+          
+          return {
+            ...taskData,
+            sequence_order: t.sequence_order,
+            is_required: t.is_required,
+            isCompleted: completion.isCompleted || false,
+            completionDate: completion.completionDate || null
+          };
+        });
+
+        console.log('📝 Processed tasks with completion status:', processedTasks);
+
         setModule(processedModule);
-        setResources(processedModule.resources);
-        setTasks(processedModule.tasks);
+        setResources(processedResources);
+        setTasks(processedTasks);
         setProgress(processedModule.isCompleted ? 100 : 0);
 
         console.log("✅ Module loaded successfully:", processedModule.name);
@@ -361,8 +249,6 @@ const ModulePage = () => {
       // Update local state
       setModule(prev => ({ ...prev, isCompleted: true }));
       setProgress(100);
-
-      // 🎉 Show animated UI
       setShowCompletionUI(true);
 
     } catch (error) {
@@ -410,7 +296,21 @@ const ModulePage = () => {
 
       console.log('✅ Task completion updated successfully');
       
-      // toast notif to be added
+      // ✅ FIXED: Update local task state immediately
+      setTasks(prevTasks => 
+        prevTasks.map(task => 
+          task.task_id === taskId 
+            ? { 
+                ...task, 
+                isCompleted, 
+                completionDate: isCompleted ? new Date().toISOString() : null 
+              }
+            : task
+        )
+      );
+
+      // Success notification (you can add toast here)
+      console.log(`🎉 Task ${isCompleted ? 'completed' : 'marked incomplete'} successfully!`);
 
     } catch (error) {
       console.error('❌ Error updating task completion:', error);
@@ -518,7 +418,6 @@ const ModulePage = () => {
     );
   }
 
-  // Main UI + Confetti overlay
   return (
     <Layout>
       {showCompletionUI && (
@@ -600,6 +499,10 @@ const ModulePage = () => {
                 <div className="flex items-center gap-1">
                   <BookOpen className="h-4 w-4" />
                   <span>{resources.length} resources</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Code className="h-4 w-4" />
+                  <span>{tasks.length} tasks</span>
                 </div>
               </div>
             </div>

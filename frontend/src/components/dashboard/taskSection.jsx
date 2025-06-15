@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -16,7 +16,8 @@ import {
 
 const TaskCard = ({ task, index, onToggleCompletion }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isCompleted, setIsCompleted] = useState(task.is_completed || false);
+  // ✅ FIXED: Use task.isCompleted from props instead of local state
+  const isCompleted = task.isCompleted || false;
 
   const handleToggleExpand = () => {
     setIsExpanded(!isExpanded);
@@ -24,7 +25,6 @@ const TaskCard = ({ task, index, onToggleCompletion }) => {
 
   const handleToggleCompletion = () => {
     const newCompletionStatus = !isCompleted;
-    setIsCompleted(newCompletionStatus);
     
     // Call the parent function to handle the completion logic
     if (onToggleCompletion) {
@@ -61,6 +61,9 @@ const TaskCard = ({ task, index, onToggleCompletion }) => {
         return 'bg-gray-50 text-gray-700 border-gray-200';
     }
   };
+
+  // ✅ DEBUG: Log the task completion status
+  console.log(`🔍 TaskCard ${task.task_title}: isCompleted = ${isCompleted}`);
 
   return (
     <Card className={`transition-all duration-200 hover:shadow-md ${
@@ -114,7 +117,7 @@ const TaskCard = ({ task, index, onToggleCompletion }) => {
                 <p className={`text-sm mb-3 ${
                   isCompleted ? 'text-gray-400' : 'text-muted-foreground'
                 }`}>
-                  {task.task_description.length > 100 
+                  {task.task_description?.length > 100 
                     ? `${task.task_description.substring(0, 100)}...`
                     : task.task_description
                   }
@@ -175,13 +178,15 @@ const TaskCard = ({ task, index, onToggleCompletion }) => {
               {task.instructions && (
                 <div>
                   <h4 className="font-medium text-sm mb-2 text-foreground">Instructions</h4>
-                  <div className="text-sm text-muted-foreground leading-relaxed">
-                    {task.instructions.split('\n').map((line, i) => (
-                      <p key={i} className="mb-1">
-                        {line.trim()}
-                      </p>
-                    ))}
-                  </div>
+                  <ol className="list-decimal ml-5 space-y-1 text-sm text-muted-foreground leading-relaxed">
+                    {task.instructions
+                      // split wherever you see “number + dot + space”
+                      .split(/\d+\.\s+/)
+                      .map(line => line.trim())
+                      .filter(line => line)
+                      .map((line, i) => <li key={i}>{line}</li>)
+                    }
+                  </ol>
                 </div>
               )}
 
@@ -203,45 +208,6 @@ const TaskCard = ({ task, index, onToggleCompletion }) => {
                 </div>
               )}
 
-              {/* Task Tips */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <h4 className="font-medium text-sm mb-1 text-blue-800">💡 Tips for Success</h4>
-                <ul className="text-xs text-blue-700 space-y-1">
-                  <li>• Break the task into smaller steps</li>
-                  <li>• Test your work frequently</li>
-                  <li>• Don't hesitate to research and ask for help</li>
-                  <li>• Document your learning process</li>
-                </ul>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex gap-2 pt-2">
-                {!isCompleted ? (
-                  <Button 
-                    size="sm" 
-                    onClick={handleToggleCompletion}
-                    className="flex items-center gap-2"
-                  >
-                    <CheckCircle2 className="h-4 w-4" />
-                    Mark Complete
-                  </Button>
-                ) : (
-                  <Button 
-                    variant="outline"
-                    size="sm" 
-                    onClick={handleToggleCompletion}
-                    className="flex items-center gap-2"
-                  >
-                    <Circle className="h-4 w-4" />
-                    Mark Incomplete
-                  </Button>
-                )}
-                
-                <Button variant="outline" size="sm">
-                  <Clock className="h-4 w-4 mr-2" />
-                  Start Timer
-                </Button>
-              </div>
             </div>
           </div>
         )}
@@ -252,44 +218,39 @@ const TaskCard = ({ task, index, onToggleCompletion }) => {
 
 // Main Tasks Section Component
 const TasksSection = ({ tasks = [], onTaskCompletion }) => {
-  const [localTasks, setLocalTasks] = useState(tasks);
-
+  // ✅ FIXED: Remove local state and use props directly
+  // This ensures the component always reflects the current parent state
+  
   const handleToggleCompletion = async (taskId, isCompleted) => {
     try {
-      // Update local state immediately for responsiveness
-      setLocalTasks(prevTasks =>
-        prevTasks.map(task =>
-          task.task_id === taskId
-            ? { ...task, is_completed: isCompleted }
-            : task
-        )
-      );
+      console.log(`🔄 TasksSection: Updating task ${taskId} to ${isCompleted ? 'completed' : 'incomplete'}`);
 
       // Call the parent callback for actual persistence
       if (onTaskCompletion) {
         await onTaskCompletion(taskId, isCompleted);
       }
 
-      console.log(`Task ${taskId} marked as ${isCompleted ? 'completed' : 'incomplete'}`);
+      console.log(`✅ TasksSection: Task ${taskId} marked as ${isCompleted ? 'completed' : 'incomplete'}`);
     } catch (error) {
-      console.error('Failed to update task completion:', error);
-      
-      // Revert local state if the update failed
-      setLocalTasks(prevTasks =>
-        prevTasks.map(task =>
-          task.task_id === taskId
-            ? { ...task, is_completed: !isCompleted }
-            : task
-        )
-      );
+      console.error('❌ TasksSection: Failed to update task completion:', error);
+      // Don't need to revert state since we're using parent state
     }
   };
 
-  const completedCount = localTasks.filter(task => task.is_completed).length;
-  const totalCount = localTasks.length;
+  // ✅ FIXED: Use tasks prop directly instead of local state
+  const completedCount = tasks.filter(task => task.isCompleted).length;
+  const totalCount = tasks.length;
+
+  // ✅ DEBUG: Log the tasks received from parent
+  console.log('🔍 TasksSection received tasks:', tasks.map(t => ({ 
+    id: t.task_id, 
+    title: t.task_title, 
+    completed: t.isCompleted 
+  })));
 
   return (
     <div className="space-y-6">
+
       {/* Progress Header */}
       <div className="flex justify-between items-center">
         <div>
@@ -320,9 +281,9 @@ const TasksSection = ({ tasks = [], onTaskCompletion }) => {
       )}
 
       {/* Task Cards */}
-      {localTasks.length > 0 ? (
+      {tasks.length > 0 ? (
         <div className="space-y-4">
-          {localTasks.map((task, index) => (
+          {tasks.map((task, index) => (
             <TaskCard
               key={task.task_id || index}
               task={task}
@@ -356,55 +317,6 @@ const TasksSection = ({ tasks = [], onTaskCompletion }) => {
         </div>
       )}
     </div>
-  );
-};
-
-// Integration code for ModulePage.jsx
-// Replace the existing tasks tab content in your ModulePage with this:
-
-const ModulePage_TasksTab_Integration = ({ tasks, user, module }) => {
-  // Task completion handler
-  const handleTaskCompletion = async (taskId, isCompleted) => {
-    try {
-      console.log('🔄 Updating task completion:', { taskId, isCompleted });
-
-      // Here you would typically call your API to update task completion
-      // For now, this is a placeholder - you'll need to implement the backend endpoint
-      
-      // Example API call structure:
-      /*
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/tasks/${taskId}/complete`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          userId: user.id,
-          isCompleted,
-          moduleId: module.id
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update task completion');
-      }
-      */
-
-      // Show success message
-      console.log(`✅ Task ${taskId} ${isCompleted ? 'completed' : 'marked incomplete'}`);
-      
-    } catch (error) {
-      console.error('❌ Failed to update task completion:', error);
-      // Re-throw to let the TasksSection component handle the error
-      throw error;
-    }
-  };
-
-  return (
-    <TasksSection 
-      tasks={tasks} 
-      onTaskCompletion={handleTaskCompletion}
-    />
   );
 };
 
