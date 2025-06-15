@@ -1,4 +1,3 @@
-// Enhanced HomePage.jsx with roadmap refresh capability
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
@@ -6,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import Layout from '../components/common/Layout';
 import RoadmapSection from '../components/dashboard/RoadmapSection';
 import ChatInterface from '../components/dashboard/ChatInterface';
+import MentorHomePage from './MentorHomePage';
 
 const HomePage = () => {
   const { user } = useAuth();
@@ -15,9 +15,54 @@ const HomePage = () => {
   const [modules, setModules] = useState([]);
   const [roadmapProgress, setRoadmapProgress] = useState(null);
 
-  // function to fetch roadmap data
+  // Check user type first
+  useEffect(() => {
+    const checkUserType = async () => {
+      if (!user) return;
+
+      try {
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('user_type, mentor_verified, onboarding_complete')
+          .eq('id', user.id)
+          .single();
+
+        if (error) {
+          console.error('Error fetching user profile:', error);
+          return;
+        }
+
+        setUserProfile(profile);
+        
+        // If user is a pure mentor, don't fetch roadmap data
+        if (profile?.user_type === 'mentor') {
+          setLoading(false);
+          return;
+        }
+        
+        // For mentees and "both" users, proceed with roadmap fetching
+        if (profile?.user_type === 'mentee' || profile?.user_type === 'both') {
+          // The fetchRoadmapFromDB will be called by the useEffect below
+          return;
+        }
+
+      } catch (error) {
+        console.error('Error in checkUserType:', error);
+        setLoading(false);
+      }
+    };
+
+    checkUserType();
+  }, [user]);
+
+  // fetch roadmap data
   const fetchRoadmapFromDB = useCallback(async (showLoading = true) => {
-    if (!user) return;
+    if (!user || !userProfile) return;
+    
+    // Don't fetch roadmap for pure mentors
+    if (userProfile.user_type === 'mentor') {
+      return;
+    }
 
     try {
       if (showLoading) setLoading(true);
@@ -225,17 +270,19 @@ const HomePage = () => {
     } finally {
       if (showLoading) setLoading(false);
     }
-  }, [user, navigate]);
+  }, [user, userProfile, navigate]);
 
-  // Initial load
+  // Initial load only after we know the user type
   useEffect(() => {
-    fetchRoadmapFromDB();
-  }, [fetchRoadmapFromDB]);
+    if (userProfile && (userProfile.user_type === 'mentee' || userProfile.user_type === 'both')) {
+      fetchRoadmapFromDB();
+    }
+  }, [userProfile, fetchRoadmapFromDB]);
 
   // Function to refresh roadmap data (can be called by ChatInterface)
   const refreshRoadmap = useCallback(async () => {
     console.log("🔄 Refreshing roadmap data...");
-    await fetchRoadmapFromDB(false); // Don't show loading spinner for refresh
+    await fetchRoadmapFromDB(false);
   }, [fetchRoadmapFromDB]);
 
   // Listen for roadmap updates from localStorage (alternative method)
@@ -250,7 +297,7 @@ const HomePage = () => {
 
     window.addEventListener('storage', handleRoadmapUpdate);
     
-    // Also listen for custom events within the same tab
+    // listen for custom events within the same tab
     const handleCustomUpdate = (event) => {
       if (event.detail?.type === 'roadmap_updated') {
         console.log("🔔 Received custom roadmap update event");
@@ -266,6 +313,26 @@ const HomePage = () => {
     };
   }, [refreshRoadmap]);
 
+  // Loading state
+  if (loading || !userProfile) {
+    return (
+      <Layout>
+        <div className="flex justify-center items-center h-[calc(100vh-64px-56px)]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading...</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Render mentor homepage for pure mentors
+  if (userProfile.user_type === 'mentor') {
+    return <MentorHomePage />;
+  }
+
+  // Render original homepage layout for mentees and "both" users
   return (
     <Layout>
       <div className="flex flex-col md:flex-row h-[calc(100vh-64px-56px)] bg-primary-light">

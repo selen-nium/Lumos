@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../supabaseClient'; // Your actual supabase import
-import { useAuth } from '../contexts/AuthContext'; // Your actual auth hook
+import { supabase } from '../supabaseClient';
+import { useAuth } from '../contexts/AuthContext';
 import Layout from '../components/common/Layout';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,11 +21,15 @@ import {
   Mail,
   Building,
   GraduationCap,
-  Plus
+  Plus,
+  Users,
+  Star,
+  CheckCircle,
+  Award
 } from 'lucide-react';
 
-// ProfileCard Component
-const ProfileCard = ({ profile, isEditing, onEdit, onSave, onCancel, onProfilePictureChange }) => {
+// ProfileCard Component - Updated for mentors vs mentees
+const ProfileCard = ({ profile, isEditing, onEdit, onSave, onCancel, onProfilePictureChange, userType }) => {
   const getInitials = (name) => {
     return name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : 'U';
   };
@@ -35,6 +39,9 @@ const ProfileCard = ({ profile, isEditing, onEdit, onSave, onCancel, onProfilePi
       document.getElementById('profile-picture-input').click();
     }
   };
+
+  const isPureMentor = userType === 'mentor';
+  const isMentor = userType === 'mentor' || userType === 'both';
 
   return (
     <Card className="relative overflow-hidden bg-gradient-to-br from-blue-50 to-purple-50 border-0 shadow-xl">
@@ -92,9 +99,14 @@ const ProfileCard = ({ profile, isEditing, onEdit, onSave, onCancel, onProfilePi
 
           {/* Name and Title */}
           <div className="space-y-2">
-            <h2 className="text-2xl font-bold text-gray-900">
-              {profile.username || 'Your Name'}
-            </h2>
+            <div className="flex items-center justify-center gap-2">
+              <h2 className="text-2xl font-bold text-gray-900">
+                {profile.username || 'Your Name'}
+              </h2>
+              {isMentor && profile.mentor_verified && (
+                <CheckCircle className="w-6 h-6 text-green-600" />
+              )}
+            </div>
             <p className="text-lg text-gray-600">
               {profile.role || 'Your Role'} {profile.company && `at ${profile.company}`}
             </p>
@@ -102,22 +114,48 @@ const ProfileCard = ({ profile, isEditing, onEdit, onSave, onCancel, onProfilePi
               <Mail className="w-4 h-4" />
               <span>{profile.email}</span>
             </div>
+            {isMentor && (
+              <Badge className="bg-blue-100 text-blue-800">
+                {userType === 'mentor' ? 'Mentor' : 'Mentor & Mentee'}
+              </Badge>
+            )}
           </div>
 
-          {/* Stats Grid */}
+          {/* Stats Grid - Different for mentors vs mentees */}
           <div className="grid grid-cols-3 gap-6 w-full max-w-sm">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">{profile.stats?.completedModules || 0}</div>
-              <div className="text-xs text-gray-600">Completed Modules</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">{profile.stats?.totalHoursLearned || 0}h</div>
-              <div className="text-xs text-gray-600">Learning Time</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">{profile.stats?.currentStreak || 0}</div>
-              <div className="text-xs text-gray-600">Day Streak</div>
-            </div>
+            {isPureMentor ? (
+              // Mentor stats
+              <>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-blue-600">{profile.mentorStats?.totalMentees || 0}</div>
+                  <div className="text-xs text-gray-600">Total Mentees</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-purple-600">{profile.mentorStats?.activeConnections || 0}</div>
+                  <div className="text-xs text-gray-600">Active Connections</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-green-600">{profile.mentorStats?.responseRate || 0}%</div>
+                  <div className="text-xs text-gray-600">Response Rate</div>
+                </div>
+              </>
+            ) : (
+              // Learning stats
+              <>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-blue-600">{profile.stats?.completedModules || 0}</div>
+                  <div className="text-xs text-gray-600">Completed Modules</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-purple-600">{profile.stats?.totalHoursLearned || 0}h</div>
+                  <div className="text-xs text-gray-600">Learning Time</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-green-600">{profile.stats?.currentStreak || 0}</div>
+                  <div className="text-xs text-gray-600">Day Streak</div>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Bio */}
@@ -125,6 +163,16 @@ const ProfileCard = ({ profile, isEditing, onEdit, onSave, onCancel, onProfilePi
             <div className="w-full">
               <p className="text-gray-700 text-center leading-relaxed max-w-md mx-auto">
                 {profile.bio}
+              </p>
+            </div>
+          )}
+
+          {/* Mentor Bio */}
+          {isMentor && profile.mentor_bio && (
+            <div className="w-full">
+              <h4 className="text-sm font-medium text-gray-600 mb-2">Mentor Bio</h4>
+              <p className="text-gray-700 text-center leading-relaxed max-w-md mx-auto">
+                {profile.mentor_bio}
               </p>
             </div>
           )}
@@ -155,7 +203,7 @@ const ProfileCard = ({ profile, isEditing, onEdit, onSave, onCancel, onProfilePi
   );
 };
 
-// Skills Section Component
+// Skills Section Component (unchanged from your original)
 const SkillsSection = ({ skills, onUpdateSkills, isEditing, loading }) => {
   const [editingSkills, setEditingSkills] = useState(false);
   const [skillsData, setSkillsData] = useState(skills);
@@ -169,7 +217,7 @@ const SkillsSection = ({ skills, onUpdateSkills, isEditing, loading }) => {
   const handleAddSkill = () => {
     if (newSkill.trim()) {
       const skill = {
-        id: Date.now(), // Temporary ID for UI
+        id: Date.now(),
         skill_name: newSkill.trim(),
         category: 'Custom'
       };
@@ -288,7 +336,7 @@ const ProfilePage = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   
-  // Profile data
+  // Profile data - Extended for mentors
   const [profile, setProfile] = useState({
     username: '',
     email: '',
@@ -300,6 +348,10 @@ const ProfilePage = () => {
     preferred_learning_time: 'evening',
     user_type: 'mentee',
     bio: '',
+    mentor_bio: '',
+    availability_hours: '',
+    years_experience: 0,
+    mentor_verified: false,
     profile_picture_url: '',
     stats: {
       completedModules: 0,
@@ -308,11 +360,21 @@ const ProfilePage = () => {
       currentStreak: 0,
       longestStreak: 0,
       totalHoursLearned: 0
+    },
+    mentorStats: {
+      totalMentees: 0,
+      activeConnections: 0,
+      responseRate: 0
     }
   });
 
   // Skills data
   const [skills, setSkills] = useState([]);
+
+  // Determine user types
+  const isPureMentor = profile.user_type === 'mentor';
+  const isMentee = profile.user_type === 'mentee' || profile.user_type === 'both';
+  const isMentor = profile.user_type === 'mentor' || profile.user_type === 'both';
 
   // Fetch user profile data from Supabase
   useEffect(() => {
@@ -360,17 +422,6 @@ const ProfilePage = () => {
           proficiency_level: item.proficiency_level
         }));
 
-        // Fetch learning stats (you can modify this based on your actual stats structure)
-        const { data: roadmapData } = await supabase
-          .from('user_learning_paths')
-          .select(`
-            user_learning_paths.*,
-            user_module_progress(*)
-          `)
-          .eq('user_id', user.id)
-          .eq('status', 'active')
-          .single();
-
         let stats = {
           completedModules: 0,
           totalModules: 0,
@@ -380,13 +431,48 @@ const ProfilePage = () => {
           totalHoursLearned: 0
         };
 
-        if (roadmapData?.user_module_progress) {
-          const modules = roadmapData.user_module_progress;
-          stats.totalModules = modules.length;
-          stats.completedModules = modules.filter(m => m.is_completed).length;
-          stats.completionPercentage = stats.totalModules > 0 ? 
-            Math.round((stats.completedModules / stats.totalModules) * 100) : 0;
-          // Add more stat calculations as needed
+        let mentorStats = {
+          totalMentees: 0,
+          activeConnections: 0,
+          responseRate: 0
+        };
+
+        // Fetch different stats based on user type
+        if (profileData?.user_type === 'mentor') {
+          // Fetch mentor stats
+          const { data: connectionRequests } = await supabase
+            .from('connection_requests')
+            .select('status')
+            .eq('to_user_id', user.id);
+
+          const totalRequests = connectionRequests?.length || 0;
+          const acceptedRequests = connectionRequests?.filter(r => r.status === 'accepted').length || 0;
+          const respondedRequests = connectionRequests?.filter(r => r.status !== 'pending').length || 0;
+
+          mentorStats = {
+            totalMentees: totalRequests,
+            activeConnections: acceptedRequests,
+            responseRate: totalRequests > 0 ? Math.round((respondedRequests / totalRequests) * 100) : 0
+          };
+        } else {
+          // Fetch learning stats for mentees
+          const { data: roadmapData } = await supabase
+            .from('user_learning_paths')
+            .select(`
+              user_learning_paths.*,
+              user_module_progress(*)
+            `)
+            .eq('user_id', user.id)
+            .eq('status', 'active')
+            .single();
+
+          if (roadmapData?.user_module_progress) {
+            const modules = roadmapData.user_module_progress;
+            stats.totalModules = modules.length;
+            stats.completedModules = modules.filter(m => m.is_completed).length;
+            stats.completionPercentage = stats.totalModules > 0 ? 
+              Math.round((stats.completedModules / stats.totalModules) * 100) : 0;
+          }
         }
         
         if (profileData) {
@@ -401,8 +487,13 @@ const ProfilePage = () => {
             preferred_learning_time: profileData.preferred_learning_time || 'evening',
             user_type: profileData.user_type || 'mentee',
             bio: profileData.bio || '',
+            mentor_bio: profileData.mentor_bio || '',
+            availability_hours: profileData.availability_hours || '',
+            years_experience: profileData.years_experience || 0,
+            mentor_verified: profileData.mentor_verified || false,
             profile_picture_url: profileData.profile_picture_url || '',
-            stats
+            stats,
+            mentorStats
           });
         }
 
@@ -419,18 +510,16 @@ const ProfilePage = () => {
     fetchProfile();
   }, [user]);
 
-  // Handle profile picture upload
+  // Handle profile picture upload (unchanged from your original)
   const handleProfilePictureUpload = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
 
-    // Validate file size (5MB limit)
     if (file.size > 5 * 1024 * 1024) {
       setError('File size must be less than 5MB');
       return;
     }
 
-    // Validate file type
     if (!file.type.startsWith('image/')) {
       setError('Please select a valid image file');
       return;
@@ -440,13 +529,11 @@ const ProfilePage = () => {
       setUploading(true);
       setError('');
 
-      // Create unique filename
       const fileExt = file.name.split('.').pop();
       const fileName = `${user.id}/${Date.now()}.${fileExt}`;
 
-      // Upload to Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('profile-pictures') // Make sure this bucket exists in your Supabase storage
+        .from('profile-pictures')
         .upload(fileName, file, {
           cacheControl: '3600',
           upsert: false
@@ -454,12 +541,10 @@ const ProfilePage = () => {
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('profile-pictures')
         .getPublicUrl(uploadData.path);
 
-      // Update profile in database
       const { error: updateError } = await supabase
         .from('profiles')
         .update({ 
@@ -470,11 +555,8 @@ const ProfilePage = () => {
 
       if (updateError) throw updateError;
 
-      // Update local state
       setProfile(prev => ({ ...prev, profile_picture_url: publicUrl }));
       setSuccess('Profile picture updated successfully!');
-      
-      // Clear success message after 3 seconds
       setTimeout(() => setSuccess(''), 3000);
       
     } catch (error) {
@@ -492,7 +574,7 @@ const ProfilePage = () => {
     setProfile(prev => ({ ...prev, [name]: value }));
   };
 
-  // Handle profile save
+  // Handle profile save - Updated for mentor fields
   const handleSave = async () => {
     if (!user) return;
 
@@ -500,21 +582,33 @@ const ProfilePage = () => {
       setSaving(true);
       setError('');
 
-      // Update profile in database
+      const updateData = {
+        username: profile.username,
+        is_employed: profile.is_employed,
+        career_stage: profile.career_stage,
+        company: profile.company,
+        role: profile.role,
+        user_type: profile.user_type,
+        bio: profile.bio,
+        updated_at: new Date().toISOString()
+      };
+
+      // Add mentor-specific fields
+      if (isMentor) {
+        updateData.mentor_bio = profile.mentor_bio;
+        updateData.availability_hours = profile.availability_hours;
+        updateData.years_experience = profile.years_experience;
+      }
+
+      // Add mentee-specific fields
+      if (isMentee) {
+        updateData.weekly_learning_hours = profile.weekly_learning_hours;
+        updateData.preferred_learning_time = profile.preferred_learning_time;
+      }
+
       const { error } = await supabase
         .from('profiles')
-        .update({
-          username: profile.username,
-          is_employed: profile.is_employed,
-          career_stage: profile.career_stage,
-          company: profile.company,
-          role: profile.role,
-          weekly_learning_hours: profile.weekly_learning_hours,
-          preferred_learning_time: profile.preferred_learning_time,
-          user_type: profile.user_type,
-          bio: profile.bio,
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('id', user.id);
 
       if (error) throw error;
@@ -532,12 +626,11 @@ const ProfilePage = () => {
     }
   };
 
-  // Handle skills update
+  // Handle skills update (unchanged from your original)
   const handleUpdateSkills = async (newSkills) => {
     if (!user) return;
 
     try {
-      // First, delete all existing user skills
       const { error: deleteError } = await supabase
         .from('user_skills')
         .delete()
@@ -545,11 +638,9 @@ const ProfilePage = () => {
 
       if (deleteError) throw deleteError;
 
-      // Filter out skills that need to be created vs existing skills
       const existingSkills = newSkills.filter(skill => skill.skill_id);
       const newSkillNames = newSkills.filter(skill => !skill.skill_id);
 
-      // Insert existing skills
       if (existingSkills.length > 0) {
         const skillsToInsert = existingSkills.map(skill => ({
           user_id: user.id,
@@ -564,11 +655,7 @@ const ProfilePage = () => {
         if (insertError) throw insertError;
       }
 
-      // For new custom skills, you might want to:
-      // 1. Create them in the skills table first
-      // 2. Then link them to the user
       for (const newSkill of newSkillNames) {
-        // Create skill in skills table
         const { data: skillData, error: skillError } = await supabase
           .from('skills')
           .insert({
@@ -579,7 +666,6 @@ const ProfilePage = () => {
           .single();
 
         if (skillError) {
-          // Skill might already exist, try to find it
           const { data: existingSkill } = await supabase
             .from('skills')
             .select('*')
@@ -587,7 +673,6 @@ const ProfilePage = () => {
             .single();
 
           if (existingSkill) {
-            // Link existing skill to user
             await supabase
               .from('user_skills')
               .insert({
@@ -597,7 +682,6 @@ const ProfilePage = () => {
               });
           }
         } else {
-          // Link new skill to user
           await supabase
             .from('user_skills')
             .insert({
@@ -608,7 +692,6 @@ const ProfilePage = () => {
         }
       }
 
-      // Refresh skills data
       const { data: updatedSkillsData, error: fetchError } = await supabase
         .from('user_skills')
         .select(`
@@ -639,11 +722,11 @@ const ProfilePage = () => {
       console.error('Error updating skills:', error);
       setError(`Failed to update skills: ${error.message}`);
       setTimeout(() => setError(''), 5000);
-      throw error; // Re-throw so the skills component can handle it
+      throw error;
     }
   };
 
-  // Handle sign out
+  // Handle sign out (unchanged from your original)
   const handleSignOut = async () => {
     try {
       setLoading(true);
@@ -674,10 +757,17 @@ const ProfilePage = () => {
     <Layout>
       <div className="min-h-screen bg-gray-50">
         <div className="container mx-auto px-4 py-8">
-          {/* Header */}
+          {/* Header - Different for mentors */}
           <div className="mb-8">
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">My Profile</h1>
-            <p className="text-gray-600">Manage your account settings and track your learning progress</p>
+            <h1 className="text-4xl font-bold text-gray-900 mb-2">
+              {isPureMentor ? 'Mentor Profile' : 'My Profile'}
+            </h1>
+            <p className="text-gray-600">
+              {isPureMentor 
+                ? 'Manage your mentor profile and mentoring preferences' 
+                : 'Manage your account settings and track your learning progress'
+              }
+            </p>
           </div>
 
           {/* Alerts */}
@@ -712,6 +802,7 @@ const ProfilePage = () => {
                 onSave={handleSave}
                 onCancel={() => setEditMode(false)}
                 onProfilePictureChange={handleProfilePictureUpload}
+                userType={profile.user_type}
               />
             </div>
 
@@ -725,7 +816,7 @@ const ProfilePage = () => {
                 loading={loading}
               />
 
-              {/* Profile Details */}
+              {/* Profile Details - Different for mentors vs mentees */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center">
@@ -777,6 +868,62 @@ const ProfilePage = () => {
                         />
                       </div>
 
+                      {/* Mentor-specific fields */}
+                      {isMentor && (
+                        <>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Mentor Bio
+                            </label>
+                            <Textarea
+                              name="mentor_bio"
+                              value={profile.mentor_bio}
+                              onChange={handleChange}
+                              placeholder="Tell potential mentees about your experience and what you can help with..."
+                              rows={4}
+                              disabled={saving}
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Years of Experience
+                              </label>
+                              <Input
+                                name="years_experience"
+                                type="number"
+                                value={profile.years_experience}
+                                onChange={handleChange}
+                                placeholder="Years of experience"
+                                disabled={saving}
+                                min="0"
+                                max="50"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Availability
+                              </label>
+                              <select
+                                name="availability_hours"
+                                value={profile.availability_hours}
+                                onChange={handleChange}
+                                disabled={saving}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50"
+                              >
+                                <option value="">Select availability</option>
+                                <option value="1-2 hours per week">1-2 hours per week</option>
+                                <option value="3-5 hours per week">3-5 hours per week</option>
+                                <option value="5-10 hours per week">5-10 hours per week</option>
+                                <option value="10+ hours per week">10+ hours per week</option>
+                              </select>
+                            </div>
+                          </div>
+                        </>
+                      )}
+
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -825,21 +972,95 @@ const ProfilePage = () => {
                           </select>
                         </div>
                         
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Weekly Learning Hours
-                          </label>
-                          <Input
-                            type="number"
-                            name="weekly_learning_hours"
-                            value={profile.weekly_learning_hours}
-                            onChange={handleChange}
-                            min="1"
-                            max="40"
-                            disabled={saving}
-                          />
+                        {/* Mentee-specific fields */}
+                        {isMentee && (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Weekly Learning Hours
+                            </label>
+                            <Input
+                              type="number"
+                              name="weekly_learning_hours"
+                              value={profile.weekly_learning_hours}
+                              onChange={handleChange}
+                              min="1"
+                              max="40"
+                              disabled={saving}
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* User Type Selection */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          I'd like to be a:
+                        </label>
+                        <div className="space-y-2">
+                          <div className="flex items-center">
+                            <input
+                              id="userType-mentee"
+                              name="user_type"
+                              type="radio"
+                              value="mentee"
+                              checked={profile.user_type === 'mentee'}
+                              onChange={handleChange}
+                              disabled={saving}
+                              className="h-4 w-4 text-blue-600"
+                            />
+                            <label htmlFor="userType-mentee" className="ml-2">Mentee (looking to learn)</label>
+                          </div>
+                          <div className="flex items-center">
+                            <input
+                              id="userType-mentor"
+                              name="user_type"
+                              type="radio"
+                              value="mentor"
+                              checked={profile.user_type === 'mentor'}
+                              onChange={handleChange}
+                              disabled={saving}
+                              className="h-4 w-4 text-blue-600"
+                            />
+                            <label htmlFor="userType-mentor" className="ml-2">Mentor (looking to guide others)</label>
+                          </div>
+                          <div className="flex items-center">
+                            <input
+                              id="userType-both"
+                              name="user_type"
+                              type="radio"
+                              value="both"
+                              checked={profile.user_type === 'both'}
+                              onChange={handleChange}
+                              disabled={saving}
+                              className="h-4 w-4 text-blue-600"
+                            />
+                            <label htmlFor="userType-both" className="ml-2">Both</label>
+                          </div>
                         </div>
                       </div>
+
+                      {/* Additional mentee fields */}
+                      {isMentee && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Preferred Learning Time
+                          </label>
+                          <select
+                            name="preferred_learning_time"
+                            value={profile.preferred_learning_time}
+                            onChange={handleChange}
+                            disabled={saving}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50"
+                          >
+                            <option value="morning">Morning</option>
+                            <option value="afternoon">Afternoon</option>
+                            <option value="evening">Evening</option>
+                            <option value="late-night">Late Night</option>
+                            <option value="weekend">Weekend</option>
+                            <option value="no-preference">No Preference</option>
+                          </select>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -868,12 +1089,47 @@ const ProfilePage = () => {
                           </p>
                         </div>
                       </div>
-                      
+
+                      {/* Mentor-specific display fields */}
+                      {isMentor && (
+                        <>
+                          <div className="flex items-center space-x-3">
+                            <Star className="w-5 h-5 text-gray-400" />
+                            <div>
+                              <p className="text-sm text-gray-500">Years of Experience</p>
+                              <p className="font-medium">{profile.years_experience || 0} years</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-3">
+                            <Clock className="w-5 h-5 text-gray-400" />
+                            <div>
+                              <p className="text-sm text-gray-500">Availability</p>
+                              <p className="font-medium">{profile.availability_hours || 'Not specified'}</p>
+                            </div>
+                          </div>
+                        </>
+                      )}
+
+                      {/* Mentee-specific display fields */}
+                      {isMentee && (
+                        <div className="flex items-center space-x-3">
+                          <Clock className="w-5 h-5 text-gray-400" />
+                          <div>
+                            <p className="text-sm text-gray-500">Weekly Learning</p>
+                            <p className="font-medium">{profile.weekly_learning_hours} hours</p>
+                          </div>
+                        </div>
+                      )}
+
                       <div className="flex items-center space-x-3">
-                        <Clock className="w-5 h-5 text-gray-400" />
+                        <User className="w-5 h-5 text-gray-400" />
                         <div>
-                          <p className="text-sm text-gray-500">Weekly Learning</p>
-                          <p className="font-medium">{profile.weekly_learning_hours} hours</p>
+                          <p className="text-sm text-gray-500">User Type</p>
+                          <p className="font-medium">
+                            {profile.user_type === 'mentee' && 'Mentee'}
+                            {profile.user_type === 'mentor' && 'Mentor'}
+                            {profile.user_type === 'both' && 'Mentor & Mentee'}
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -881,48 +1137,92 @@ const ProfilePage = () => {
                 </CardContent>
               </Card>
 
-              {/* Learning Progress */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Trophy className="w-5 h-5 mr-2" />
-                    Learning Progress
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="text-center p-4 bg-blue-50 rounded-lg">
-                      <div className="text-3xl font-bold text-blue-600 mb-1">
-                        {profile.stats.completionPercentage}%
+              {/* Progress Section - Different for mentors vs mentees */}
+              {isPureMentor ? (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <Users className="w-5 h-5 mr-2" />
+                      Mentoring Impact
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="text-center p-4 bg-blue-50 rounded-lg">
+                        <div className="text-3xl font-bold text-blue-600 mb-1">
+                          {profile.mentorStats.totalMentees}
+                        </div>
+                        <div className="text-sm text-gray-600">Total Mentees</div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          All time
+                        </div>
                       </div>
-                      <div className="text-sm text-gray-600">Course Progress</div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        {profile.stats.completedModules}/{profile.stats.totalModules} modules
+                      
+                      <div className="text-center p-4 bg-green-50 rounded-lg">
+                        <div className="text-3xl font-bold text-green-600 mb-1">
+                          {profile.mentorStats.activeConnections}
+                        </div>
+                        <div className="text-sm text-gray-600">Active Connections</div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          Currently mentoring
+                        </div>
+                      </div>
+                      
+                      <div className="text-center p-4 bg-purple-50 rounded-lg">
+                        <div className="text-3xl font-bold text-purple-600 mb-1">
+                          {profile.mentorStats.responseRate}%
+                        </div>
+                        <div className="text-sm text-gray-600">Response Rate</div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          Request responsiveness
+                        </div>
                       </div>
                     </div>
-                    
-                    <div className="text-center p-4 bg-green-50 rounded-lg">
-                      <div className="text-3xl font-bold text-green-600 mb-1">
-                        {profile.stats.currentStreak}
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <Trophy className="w-5 h-5 mr-2" />
+                      Learning Progress
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="text-center p-4 bg-blue-50 rounded-lg">
+                        <div className="text-3xl font-bold text-blue-600 mb-1">
+                          {profile.stats.completionPercentage}%
+                        </div>
+                        <div className="text-sm text-gray-600">Course Progress</div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {profile.stats.completedModules}/{profile.stats.totalModules} modules
+                        </div>
                       </div>
-                      <div className="text-sm text-gray-600">Day Streak</div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        Best: {profile.stats.longestStreak} days
+                      
+                      <div className="text-center p-4 bg-green-50 rounded-lg">
+                        <div className="text-3xl font-bold text-green-600 mb-1">
+                          {profile.stats.currentStreak}
+                        </div>
+                        <div className="text-sm text-gray-600">Day Streak</div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          Best: {profile.stats.longestStreak} days
+                        </div>
+                      </div>
+                      
+                      <div className="text-center p-4 bg-purple-50 rounded-lg">
+                        <div className="text-3xl font-bold text-purple-600 mb-1">
+                          {profile.stats.totalHoursLearned}h
+                        </div>
+                        <div className="text-sm text-gray-600">Total Time</div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          This month
+                        </div>
                       </div>
                     </div>
-                    
-                    <div className="text-center p-4 bg-purple-50 rounded-lg">
-                      <div className="text-3xl font-bold text-purple-600 mb-1">
-                        {profile.stats.totalHoursLearned}h
-                      </div>
-                      <div className="text-sm text-gray-600">Total Time</div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        This month
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Account Settings */}
               <Card>

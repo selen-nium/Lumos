@@ -6,7 +6,7 @@ import { supabase } from '../supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { AlertCircle, Loader2, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
+import { AlertCircle, Loader2, ChevronLeft, ChevronRight, CheckCircle } from 'lucide-react';
 import Logo from '../components/common/Logo';
 import Step1Profile from '../components/onboarding/Step1Profile';
 import Step2Career from '../components/onboarding/Step2Career';
@@ -51,26 +51,47 @@ const OnboardingPage = () => {
       role: '',
       weeklyLearningHours: 1,
       preferredLearningTime: 'evening',
-      userType: 'mentee'
+      userType: 'mentee',
+      // Mentor-specific fields
+      yearsExperience: '',
+      mentorBio: '',
+      availabilityHours: '2 hours/week'
     },
-    validationSchema: Yup.object({
-      username: Yup.string()
-        .min(2, 'Username must be at least 2 characters')
-        .max(50, 'Username must be less than 50 characters')
-        .required('Username is required'),
-      isEmployed: Yup.string().required('Required'),
-      careerStage: Yup.string().required('Required'),
-      company: Yup.string().when('isEmployed', {
-        is: val => val === 'yes',
-        then: () => Yup.string().required('Required'),
+    validationSchema: Yup.object().shape({
+      username: Yup.string().required('Username is required'),
+      isEmployed: Yup.string().required('Employment status is required'),
+      careerStage: Yup.string().required('Career stage is required'),
+      company: Yup.string().when(['isEmployed'], {
+        is: 'yes',
+        then: () => Yup.string().required('Company is required'),
       }),
-      role: Yup.string().when('isEmployed', {
-        is: val => val === 'yes',
-        then: () => Yup.string().required('Required'),
+      role: Yup.string().when(['isEmployed'], {
+        is: 'yes',
+        then: () => Yup.string().required('Role is required'),
       }),
-      weeklyLearningHours: Yup.number().required('Required'),
-      preferredLearningTime: Yup.string().required('Required'),
-      userType: Yup.string().required('Required'),
+      userType: Yup.string().required('User type is required'),
+      // Conditional validation for mentees
+      weeklyLearningHours: Yup.number().when(['userType'], {
+        is: (userType) => userType === 'mentee' || userType === 'both',
+        then: () => Yup.number().required('Learning hours required for mentees'),
+      }),
+      preferredLearningTime: Yup.string().when(['userType'], {
+        is: (userType) => userType === 'mentee' || userType === 'both',
+        then: () => Yup.string().required('Preferred learning time required for mentees'),
+      }),
+      // Conditional validation for mentors
+      yearsExperience: Yup.number().when(['userType'], {
+        is: (userType) => userType === 'mentor' || userType === 'both',
+        then: () => Yup.number().min(1, 'At least 1 year of experience required').required('Experience required for mentors'),
+      }),
+      mentorBio: Yup.string().when(['userType'], {
+        is: (userType) => userType === 'mentor' || userType === 'both',
+        then: () => Yup.string().min(50, 'Bio should be at least 50 characters').required('Bio required for mentors'),
+      }),
+      availabilityHours: Yup.string().when(['userType'], {
+        is: (userType) => userType === 'mentor' || userType === 'both',
+        then: () => Yup.string().required('Availability required for mentors'),
+      })
     }),
     onSubmit: async (values) => {
       if (!user) return setError('User not authenticated');
@@ -78,9 +99,9 @@ const OnboardingPage = () => {
       setError('');
 
       try {
-        console.log('🚀 Starting onboarding process for user:', user.id);
+        const isMentor = values.userType === 'mentor' || values.userType === 'both';
+        const isMentee = values.userType === 'mentee' || values.userType === 'both';
 
-        // Step 1: Save profile data
         const profileData = {
           id: user.id,
           username: values.username,
@@ -89,39 +110,32 @@ const OnboardingPage = () => {
           career_stage: values.careerStage,
           company: values.company || null,
           role: values.role || null,
-          weekly_learning_hours: values.weeklyLearningHours,
-          preferred_learning_time: values.preferredLearningTime,
+          weekly_learning_hours: isMentee ? values.weeklyLearningHours : null,
+          preferred_learning_time: isMentee ? values.preferredLearningTime : null,
           user_type: values.userType,
-          onboarding_complete: false, // Keep false until everything is done
+          onboarding_complete: true,
+          // Mentor-specific fields
+          mentor_verified: false, // Will be verified later by admin
+          mentor_bio: isMentor ? values.mentorBio : null,
+          availability_hours: isMentor ? values.availabilityHours : null,
+          years_experience: isMentor ? values.yearsExperience : null,
           updated_at: new Date().toISOString(),
         };
 
-        console.log('💾 Saving profile data...');
-        const { error: profileError } = await supabase.from('profiles').upsert(profileData);
-        if (profileError) {
-          console.error('Profile save error:', profileError);
-          throw new Error(`Failed to save profile: ${profileError.message}`);
-        }
+        await supabase.from('profiles').upsert(profileData);
 
-        // Step 2: Save skills
+        // Handle skills for all users
         if (selectedSkills.length > 0) {
-          console.log('🛠️ Saving user skills...');
           const userSkills = selectedSkills.map(id => ({
             user_id: user.id,
             skill_id: id,
             proficiency_level: 3
           }));
-          
-          const { error: skillsError } = await supabase.from('user_skills').upsert(userSkills);
-          if (skillsError) {
-            console.error('Skills save error:', skillsError);
-            throw new Error(`Failed to save skills: ${skillsError.message}`);
-          }
+          await supabase.from('user_skills').upsert(userSkills);
         }
 
-        // Step 3: Save goals
-        if (selectedGoals.length > 0) {
-          console.log('🎯 Saving user goals...');
+        // Handle goals only for mentees
+        if (isMentee && selectedGoals.length > 0) {
           const userGoals = selectedGoals.map(id => ({
             user_id: user.id,
             goal_id: id,
@@ -129,25 +143,30 @@ const OnboardingPage = () => {
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           }));
-          
-          const { error: goalsError } = await supabase.from('user_goals').upsert(userGoals);
-          if (goalsError) {
-            console.error('Goals save error:', goalsError);
-            throw new Error(`Failed to save goals: ${goalsError.message}`);
-          }
+          await supabase.from('user_goals').upsert(userGoals);
         }
 
-        console.log('✅ Profile data saved successfully');
+        // For mentors, show success message and redirect to community
+        if (values.userType === 'mentor') {
+          // Don't generate roadmap for pure mentors
+          const { data: profileCheck } = await supabase
+            .from('profiles')
+            .select('onboarding_complete')
+            .eq('id', user.id)
+            .single();
 
-        // Step 4: Generate roadmap
+          if (profileCheck?.onboarding_complete) {
+            navigate('/community?fromOnboarding=true&userType=mentor');
+          } else {
+            setError('Onboarding not completed properly. Please try again.');
+          }
+          return;
+        }
+
+        // For mentees and both, generate roadmap
         setGeneratingRoadmap(true);
-        console.log('🗺️ Generating roadmap...');
 
         const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          throw new Error('Session expired. Please login again.');
-        }
-
         const response = await fetch(`${import.meta.env.VITE_API_URL}/api/roadmap/generate`, {
           method: 'POST',
           headers: {
@@ -167,65 +186,24 @@ const OnboardingPage = () => {
           })
         });
 
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('Roadmap API error:', errorText);
-          throw new Error(`Roadmap generation failed: ${response.status} ${response.statusText}`);
-        }
-
         const result = await response.json();
-        console.log('🗺️ Roadmap generation result:', result);
+        if (!result.success) throw new Error(result.error || 'Failed to generate roadmap');
 
-        if (!result.success) {
-          throw new Error(result.error || 'Failed to generate roadmap');
-        }
-
-        console.log('✅ Roadmap generated successfully');
-
-        // Step 5: Mark onboarding as complete
-        console.log('✅ Marking onboarding as complete...');
-        const { error: completionError } = await supabase
-          .from('profiles')
-          .update({ 
-            onboarding_complete: true,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', user.id);
-
-        if (completionError) {
-          console.error('Completion update error:', completionError);
-          throw new Error(`Failed to complete onboarding: ${completionError.message}`);
-        }
-
-        // Step 6: Verify onboarding completion
-        console.log('🔍 Verifying onboarding completion...');
-        const { data: profileCheck, error: checkError } = await supabase
+        const { data: profileCheck } = await supabase
           .from('profiles')
           .select('onboarding_complete')
           .eq('id', user.id)
           .single();
 
-        if (checkError) {
-          console.error('Profile check error:', checkError);
-          throw new Error(`Failed to verify onboarding: ${checkError.message}`);
-        }
-
-        console.log('📋 Profile check result:', profileCheck);
-
-        if (profileCheck?.onboarding_complete === true) {
-          console.log('🎉 Onboarding completed successfully! Redirecting...');
+        if (profileCheck?.onboarding_complete) {
           navigate(`/home?fromOnboarding=true&t=${Date.now()}`);
         } else {
-          console.error('❌ Onboarding completion check failed:', profileCheck);
-          throw new Error('Onboarding completion verification failed. Please try again.');
+          setError('Onboarding not completed properly. Please try again.');
         }
 
       } catch (err) {
-        console.error('❌ Onboarding error:', err);
+        console.error(err);
         setError(err.message || 'An unexpected error occurred. Please try again.');
-        
-        // Reset the roadmap generation state on error
-        setGeneratingRoadmap(false);
       } finally {
         setIsLoading(false);
         setGeneratingRoadmap(false);
@@ -233,8 +211,74 @@ const OnboardingPage = () => {
     }
   });
 
-  const renderStep = () => {
+  const canProceedToNextStep = () => {
     switch (currentStep) {
+      case 1:
+        return formik.values.username && formik.values.isEmployed;
+      case 2:
+        const isEmploymentValid = formik.values.isEmployed === 'no' || 
+          (formik.values.company && formik.values.role);
+        const isMentor = formik.values.userType === 'mentor' || formik.values.userType === 'both';
+        const isMentee = formik.values.userType === 'mentee' || formik.values.userType === 'both';
+        
+        let mentorFieldsValid = true;
+        if (isMentor) {
+          mentorFieldsValid = formik.values.yearsExperience && 
+                             formik.values.mentorBio && 
+                             formik.values.mentorBio.length >= 50 &&
+                             formik.values.availabilityHours;
+        }
+        
+        let menteeFieldsValid = true;
+        if (isMentee) {
+          menteeFieldsValid = formik.values.weeklyLearningHours && 
+                             formik.values.preferredLearningTime;
+        }
+        
+        return formik.values.careerStage && 
+               formik.values.userType && 
+               isEmploymentValid && 
+               mentorFieldsValid && 
+               menteeFieldsValid;
+      case 3:
+        return selectedSkills.length > 0;
+      case 4:
+        // Goals only required for mentees
+        if (formik.values.userType === 'mentor') return true;
+        return selectedGoals.length > 0;
+      case 5:
+        return true;
+      default:
+        return true;
+    }
+  };
+
+  const handleNext = () => {
+    if (canProceedToNextStep()) {
+      setCurrentStep(s => s + 1);
+    }
+  };
+
+  const shouldShowStep = (step) => {
+    // Step 4 (Goals) is only shown for mentees and both
+    if (step === 4) {
+      return formik.values.userType === 'mentee' || formik.values.userType === 'both';
+    }
+    return true;
+  };
+
+  const getEffectiveStep = () => {
+    // If we're on step 4 but it should be skipped, treat as step 5
+    if (currentStep === 4 && !shouldShowStep(4)) {
+      return 5;
+    }
+    return currentStep;
+  };
+
+  const renderStep = () => {
+    const effectiveStep = getEffectiveStep();
+    
+    switch (effectiveStep) {
       case 1: return <Step1Profile formik={formik} />;
       case 2: return <Step2Career formik={formik} />;
       case 3: return <Step3Skills skills={skills} selectedSkills={selectedSkills} setSelectedSkills={setSelectedSkills} />;
@@ -242,6 +286,18 @@ const OnboardingPage = () => {
       case 5: return <Step5Review formik={formik} skills={skills} goals={goals} selectedSkills={selectedSkills} selectedGoals={selectedGoals} generatingRoadmap={generatingRoadmap} />;
       default: return null;
     }
+  };
+
+  const getStepTitle = () => {
+    const effectiveStep = getEffectiveStep();
+    const titles = {
+      1: "Personal Information",
+      2: "Career & Experience",
+      3: "Current Skills",
+      4: "Learning Goals",
+      5: "Review & Confirm"
+    };
+    return titles[effectiveStep] || "Getting Started";
   };
 
   return (
@@ -252,77 +308,68 @@ const OnboardingPage = () => {
       <div className="max-w-2xl w-full text-center mb-6">
         <Progress value={(currentStep / totalSteps) * 100} className="h-3 mb-2 border-2 border-black" />
         <p className="text-muted-foreground text-sm">Step {currentStep} of {totalSteps}</p>
+        <h2 className="text-xl font-semibold mt-2">{getStepTitle()}</h2>
       </div>
 
       {/* Card Container */}
       <Card className="w-full max-w-3xl shadow-lg">
         <CardContent className="p-6 space-y-6">
-          <h1 className="text-2xl font-semibold text-center">Before we get started...</h1>
           {renderStep()}
 
-          <div className="flex justify-between items-center mt-4">
+          <div className="flex justify-between items-center mt-6">
             {currentStep > 1 ? (
-              <Button 
-                variant="outline" 
-                className='group' 
-                size='sm' 
-                onClick={() => setCurrentStep(s => s - 1)}
-                disabled={isLoading || generatingRoadmap}
-              >
-                <ChevronLeft className="w-4 h-4 mr-1 group-hover:-translate-x-1 transition-transform" /> Back
+              <Button variant="outline" onClick={() => setCurrentStep(s => s - 1)}>
+                <ChevronLeft className="w-4 h-4 mr-2" /> Back
               </Button>
             ) : <div />}
 
             {currentStep < totalSteps ? (
               <Button 
-                variant='default' 
-                className='group' 
-                size='sm' 
-                onClick={() => setCurrentStep(s => s + 1)}
-                disabled={isLoading || generatingRoadmap}
+                onClick={handleNext}
+                disabled={!canProceedToNextStep()}
               >
-                Next <ChevronRight className="h-4 w-4 ml-1 group-hover:translate-x-1 transition-transform" />
+                Next <ChevronRight className="w-4 h-4 ml-2" />
               </Button>
             ) : (
               <Button 
                 type='submit' 
-                className='w-50 h-10 group hover:scale-105 transition-transform' 
                 onClick={formik.handleSubmit} 
-                disabled={isLoading || generatingRoadmap}
+                disabled={isLoading || generatingRoadmap || !canProceedToNextStep()}
               >
-                {generatingRoadmap ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  </>
-                ) : isLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Saving...
-                  </>
+                {generatingRoadmap || isLoading ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 ) : (
-                  <>
-                    <Sparkles className="w-4 h-4 mr-2 group-hover:rotate-20 transition-transform" />
-                    Generate Roadmap
-                  </>
+                  <CheckCircle className="w-4 h-4 mr-2" />
                 )}
+                {formik.values.userType === 'mentor' ? 'Complete Setup' : 'Generate My Roadmap'}
               </Button>
             )}
           </div>
 
           {error && (
-            <div className="flex items-start text-sm text-destructive mt-2 p-3 bg-red-50 border border-red-200 rounded-md">
-              <AlertCircle className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" /> 
+            <div className="flex items-center text-sm text-destructive mt-4 p-3 bg-red-50 rounded-lg border border-red-200">
+              <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" /> 
               <span>{error}</span>
             </div>
           )}
 
-          {generatingRoadmap && (
-            <div className="text-center text-sm text-muted-foreground bg-blue-50 border border-blue-200 rounded-md p-3">
-              <div className="flex items-center justify-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Creating your personalized learning roadmap...</span>
+          {/* Mentor verification notice */}
+          {(formik.values.userType === 'mentor' || formik.values.userType === 'both') && currentStep === 5 && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                    <span className="text-blue-600 text-sm">ℹ️</span>
+                  </div>
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-blue-800">Mentor Verification Process</h3>
+                  <p className="text-sm text-blue-700 mt-1">
+                    After completing setup, our team will contact you via your registered email for verification. 
+                    This ensures the quality and safety of our mentoring community.
+                  </p>
+                </div>
               </div>
-              <p className="text-xs mt-1">This may take a few moments</p>
             </div>
           )}
         </CardContent>
