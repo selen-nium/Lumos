@@ -28,7 +28,7 @@ import {
   Award
 } from 'lucide-react';
 
-// ProfileCard Component - Updated for mentors vs mentees
+// ProfileCard Component
 const ProfileCard = ({ profile, isEditing, onEdit, onSave, onCancel, onProfilePictureChange, userType }) => {
   const getInitials = (name) => {
     return name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : 'U';
@@ -121,7 +121,7 @@ const ProfileCard = ({ profile, isEditing, onEdit, onSave, onCancel, onProfilePi
             )}
           </div>
 
-          {/* Stats Grid - Different for mentors vs mentees */}
+          {/* Stats Grid */}
           <div className="grid grid-cols-3 gap-6 w-full max-w-sm">
             {isPureMentor ? (
               // Mentor stats
@@ -203,7 +203,7 @@ const ProfileCard = ({ profile, isEditing, onEdit, onSave, onCancel, onProfilePi
   );
 };
 
-// Skills Section Component (unchanged from your original)
+// Skills Section Component
 const SkillsSection = ({ skills, onUpdateSkills, isEditing, loading }) => {
   const [editingSkills, setEditingSkills] = useState(false);
   const [skillsData, setSkillsData] = useState(skills);
@@ -336,7 +336,7 @@ const ProfilePage = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   
-  // Profile data - Extended for mentors
+  // Profile data
   const [profile, setProfile] = useState({
     username: '',
     email: '',
@@ -510,7 +510,7 @@ const ProfilePage = () => {
     fetchProfile();
   }, [user]);
 
-  // Handle profile picture upload (unchanged from your original)
+  // Handle profile picture upload
   const handleProfilePictureUpload = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -574,7 +574,7 @@ const ProfilePage = () => {
     setProfile(prev => ({ ...prev, [name]: value }));
   };
 
-  // Handle profile save - Updated for mentor fields
+  // Handle profile save
   const handleSave = async () => {
     if (!user) return;
 
@@ -626,7 +626,7 @@ const ProfilePage = () => {
     }
   };
 
-  // Handle skills update (unchanged from your original)
+  // Handle skills update
   const handleUpdateSkills = async (newSkills) => {
     if (!user) return;
 
@@ -726,7 +726,7 @@ const ProfilePage = () => {
     }
   };
 
-  // Handle sign out (unchanged from your original)
+  // Handle sign out
   const handleSignOut = async () => {
     try {
       setLoading(true);
