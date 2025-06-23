@@ -47,6 +47,7 @@ const Header = () => {
       return [
         { name: 'Dashboard', path: '/home' },
         { name: 'Community', path: '/community' },
+        { name: 'Study Groups', path: '/study-groups' },
         { 
           name: 'Inbox', 
           path: '/inbox',
@@ -60,6 +61,7 @@ const Header = () => {
         { name: 'Home', path: '/home' },
         { name: 'Learning Stats', path: '/stats' },
         { name: 'Community', path: '/community' },
+        { name: 'Study Groups', path: '/study-groups' },
         { 
           name: 'Inbox', 
           path: '/inbox',

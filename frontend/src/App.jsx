@@ -15,6 +15,8 @@ import CommunityPage from './pages/CommunityPage';
 import ProfilePage from './pages/ProfilePage';
 import InboxPage from './pages/InboxPage';
 import MessagesPage from './pages/MessagesPage';
+import StudyGroupsPage from './pages/StudyGroupsPage';
+import GroupChatPage from './pages/GroupChatPage';
 // import AdminPage from './pages/AdminPage';
 
 function App() {
@@ -68,6 +70,18 @@ function App() {
           <Route path="/messages/:connectionId" element={
             <ProtectedRoute>
               <MessagesPage />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/study-groups" element={
+            <ProtectedRoute>
+              <StudyGroupsPage />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/study-groups/:groupId" element={
+            <ProtectedRoute>
+              <GroupChatPage />
             </ProtectedRoute>
           } />
           

@@ -318,7 +318,6 @@ class LearningPathTemplateService {
    */
     async incrementUsageCount(templateId) {
         try {
-            // Simple approach - just update the count
             await this.db.serviceClient
             .from('learning_path_templates')
             .update({ usage_count: this.db.serviceClient.literal('usage_count + 1') })
