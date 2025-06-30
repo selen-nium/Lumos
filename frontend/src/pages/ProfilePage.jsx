@@ -25,10 +25,28 @@ import {
   Users,
   Star,
   CheckCircle,
-  Award
+  Award,
+  Calendar,
+  Target,
+  TrendingUp,
+  Sparkles,
+  Settings,
+  LogOut,
+  Shield,
+  Heart,
+  BookOpen,
+  Zap
 } from 'lucide-react';
 
-// ProfileCard Component
+// Background Pattern
+// const BackgroundPattern = React.memo(() => (
+//   <div className="absolute inset-0 overflow-hidden pointer-events-none">
+//     <div className="absolute top-0 left-0 w-96 h-96 bg-gradient-to-br from-lumos-primary/10 to-lumos-primary-light/5 rounded-full filter blur-3xl transform -translate-x-1/2 -translate-y-1/2"></div>
+//     <div className="absolute bottom-0 right-0 w-96 h-96 bg-gradient-to-tl from-lumos-primary/5 to-lumos-primary-muted/10 rounded-full filter blur-3xl transform translate-x-1/2 translate-y-1/2"></div>
+//   </div>
+// ));
+
+// ProfileCard
 const ProfileCard = ({ profile, isEditing, onEdit, onSave, onCancel, onProfilePictureChange, userType }) => {
   const getInitials = (name) => {
     return name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : 'U';
@@ -44,26 +62,13 @@ const ProfileCard = ({ profile, isEditing, onEdit, onSave, onCancel, onProfilePi
   const isMentor = userType === 'mentor' || userType === 'both';
 
   return (
-    <Card className="relative overflow-hidden bg-gradient-to-br from-blue-50 to-purple-50 border-0 shadow-xl">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 opacity-10">
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-purple-600"></div>
-        <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100">
-          <defs>
-            <pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
-              <path d="M 10 0 L 0 0 0 10" fill="none" stroke="currentColor" strokeWidth="0.5"/>
-            </pattern>
-          </defs>
-          <rect width="100" height="100" fill="url(#grid)" />
-        </svg>
-      </div>
-
-      <CardContent className="relative p-8">
+    <Card className="card-minimal-hover bg-white/80 backdrop-blur-sm border border-lumos-primary/20 overflow-hidden">
+      <CardContent className="p-8">
         <div className="flex flex-col items-center text-center space-y-6">
           {/* Profile Picture */}
           <div className="relative group">
             <Avatar 
-              className="w-32 h-32 border-4 border-white shadow-lg cursor-pointer" 
+              className="w-32 h-32 ring-4 ring-lumos-primary/20 shadow-lg cursor-pointer hover:ring-lumos-primary/40 transition-all duration-300" 
               onClick={handleProfilePictureClick}
             >
               <AvatarImage 
@@ -71,17 +76,24 @@ const ProfileCard = ({ profile, isEditing, onEdit, onSave, onCancel, onProfilePi
                 alt={profile.username}
                 className="object-cover"
               />
-              <AvatarFallback className="text-2xl bg-gradient-to-br from-blue-500 to-purple-600 text-white">
+              <AvatarFallback className="bg-gradient-to-br from-lumos-primary to-lumos-primary-dark text-white text-3xl font-bold">
                 {getInitials(profile.username)}
               </AvatarFallback>
             </Avatar>
             
             {isEditing && (
               <div 
-                className="absolute inset-0 rounded-full bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                className="absolute inset-0 rounded-full bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer backdrop-blur-sm"
                 onClick={handleProfilePictureClick}
               >
                 <Camera className="w-8 h-8 text-white" />
+              </div>
+            )}
+            
+            {/* Verification Badge */}
+            {isMentor && profile.mentor_verified && (
+              <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center border-4 border-white shadow-lg animate-fade-in">
+                <CheckCircle className="w-5 h-5 text-white" />
               </div>
             )}
             
@@ -98,99 +110,97 @@ const ProfileCard = ({ profile, isEditing, onEdit, onSave, onCancel, onProfilePi
           </div>
 
           {/* Name and Title */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-center gap-2">
-              <h2 className="text-2xl font-bold text-gray-900">
+          <div className="space-y-3">
+            <div className="flex items-center justify-center gap-3">
+              <h2 className="text-3xl font-bold text-foreground">
                 {profile.username || 'Your Name'}
               </h2>
-              {isMentor && profile.mentor_verified && (
-                <CheckCircle className="w-6 h-6 text-green-600" />
-              )}
             </div>
-            <p className="text-lg text-gray-600">
-              {profile.role || 'Your Role'} {profile.company && `at ${profile.company}`}
-            </p>
-            <div className="flex items-center justify-center space-x-2 text-sm text-gray-500">
-              <Mail className="w-4 h-4" />
-              <span>{profile.email}</span>
+            
+            <div className="space-y-2">
+              <p className="text-xl text-muted-foreground font-medium">
+                {profile.role || 'Your Role'} 
+                {profile.company && (
+                  <span className="text-lumos-primary"> at {profile.company}</span>
+                )}
+              </p>
+              
+              <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                <Mail className="w-4 h-4" />
+                <span className="text-sm">{profile.email}</span>
+              </div>
             </div>
-            {isMentor && (
-              <Badge className="bg-blue-100 text-blue-800">
-                {userType === 'mentor' ? 'Mentor' : 'Mentor & Mentee'}
+            
+            {/* User Type Badge */}
+            <div className="flex justify-center">
+              <Badge className="bg-gradient-to-r from-lumos-primary to-lumos-primary-dark text-white border-0 px-4 py-2 text-sm font-medium">
+                {userType === 'mentor' && <><Award className="w-4 h-4 mr-2" />Mentor</>}
+                {userType === 'mentee' && <><BookOpen className="w-4 h-4 mr-2" />Mentee</>}
+                {userType === 'both' && <><Users className="w-4 h-4 mr-2" />Mentor & Mentee</>}
               </Badge>
-            )}
+            </div>
           </div>
 
           {/* Stats Grid */}
-          <div className="grid grid-cols-3 gap-6 w-full max-w-sm">
+          <div className="grid grid-cols-3 gap-4 w-full">
             {isPureMentor ? (
               // Mentor stats
               <>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-600">{profile.mentorStats?.totalMentees || 0}</div>
-                  <div className="text-xs text-gray-600">Total Mentees</div>
+                <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border border-blue-200">
+                  <div className="text-2xl font-bold text-blue-600 mb-1">{profile.mentorStats?.totalMentees || 0}</div>
+                  <div className="text-xs text-blue-700 font-medium">Total Mentees</div>
                 </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-purple-600">{profile.mentorStats?.activeConnections || 0}</div>
-                  <div className="text-xs text-gray-600">Active Connections</div>
+                <div className="text-center p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-xl border border-green-200">
+                  <div className="text-2xl font-bold text-green-600 mb-1">{profile.mentorStats?.activeConnections || 0}</div>
+                  <div className="text-xs text-green-700 font-medium">Active Now</div>
                 </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-green-600">{profile.mentorStats?.responseRate || 0}%</div>
-                  <div className="text-xs text-gray-600">Response Rate</div>
+                <div className="text-center p-4 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl border border-purple-200">
+                  <div className="text-2xl font-bold text-purple-600 mb-1">{profile.mentorStats?.responseRate || 0}%</div>
+                  <div className="text-xs text-purple-700 font-medium">Response Rate</div>
                 </div>
               </>
             ) : (
               // Learning stats
               <>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-600">{profile.stats?.completedModules || 0}</div>
-                  <div className="text-xs text-gray-600">Completed Modules</div>
+                <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border border-blue-200">
+                  <div className="text-2xl font-bold text-blue-600 mb-1">{profile.stats?.completedModules || 0}</div>
+                  <div className="text-xs text-blue-700 font-medium">Modules Done</div>
                 </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-purple-600">{profile.stats?.totalHoursLearned || 0}h</div>
-                  <div className="text-xs text-gray-600">Learning Time</div>
+                <div className="text-center p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-xl border border-green-200">
+                  <div className="text-2xl font-bold text-green-600 mb-1">{profile.stats?.totalHoursLearned || 0}h</div>
+                  <div className="text-xs text-green-700 font-medium">Learning Time</div>
                 </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-green-600">{profile.stats?.currentStreak || 0}</div>
-                  <div className="text-xs text-gray-600">Day Streak</div>
+                <div className="text-center p-4 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl border border-purple-200">
+                  <div className="text-2xl font-bold text-purple-600 mb-1">{profile.stats?.currentStreak || 0}</div>
+                  <div className="text-xs text-purple-700 font-medium">Day Streak</div>
                 </div>
               </>
             )}
           </div>
 
-          {/* Bio */}
-          {profile.bio && (
-            <div className="w-full">
-              <p className="text-gray-700 text-center leading-relaxed max-w-md mx-auto">
+          {/* Bio Preview */}
+          {profile.bio && !isEditing && (
+            <div className="w-full p-4 bg-muted/30 rounded-xl border border-border">
+              <p className="text-muted-foreground text-center leading-relaxed text-sm">
                 {profile.bio}
               </p>
             </div>
           )}
 
-          {/* Mentor Bio */}
-          {isMentor && profile.mentor_bio && (
-            <div className="w-full">
-              <h4 className="text-sm font-medium text-gray-600 mb-2">Mentor Bio</h4>
-              <p className="text-gray-700 text-center leading-relaxed max-w-md mx-auto">
-                {profile.mentor_bio}
-              </p>
-            </div>
-          )}
-
           {/* Action Buttons */}
-          <div className="flex space-x-3">
+          <div className="flex gap-3 w-full">
             {!isEditing ? (
-              <Button onClick={onEdit} className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700">
+              <Button onClick={onEdit} className="btn-primary-rounded flex-1 hover-lift">
                 <Edit3 className="w-4 h-4 mr-2" />
                 Edit Profile
               </Button>
             ) : (
               <>
-                <Button onClick={onSave} className="bg-green-600 hover:bg-green-700">
+                <Button onClick={onSave} className="btn-primary-rounded flex-1 hover-lift">
                   <Save className="w-4 h-4 mr-2" />
                   Save
                 </Button>
-                <Button onClick={onCancel} variant="outline">
+                <Button onClick={onCancel} variant="outline" className="btn-outline-rounded flex-1">
                   <X className="w-4 h-4 mr-2" />
                   Cancel
                 </Button>
@@ -203,7 +213,7 @@ const ProfileCard = ({ profile, isEditing, onEdit, onSave, onCancel, onProfilePi
   );
 };
 
-// Skills Section Component
+// Skills Section 
 const SkillsSection = ({ skills, onUpdateSkills, isEditing, loading }) => {
   const [editingSkills, setEditingSkills] = useState(false);
   const [skillsData, setSkillsData] = useState(skills);
@@ -251,17 +261,20 @@ const SkillsSection = ({ skills, onUpdateSkills, isEditing, loading }) => {
   };
 
   return (
-    <Card>
+    <Card className="card-minimal-hover">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-        <CardTitle className="text-xl font-semibold">Skills & Expertise</CardTitle>
+        <CardTitle className="text-xl font-bold flex items-center gap-2">
+          <Zap className="w-5 h-5 text-lumos-primary" />
+          Skills & Expertise
+        </CardTitle>
         {!editingSkills ? (
-          <Button onClick={() => setEditingSkills(true)} variant="outline" size="sm" disabled={loading}>
+          <Button onClick={() => setEditingSkills(true)} variant="outline" size="sm" disabled={loading} className="btn-outline-rounded">
             <Edit3 className="w-4 h-4 mr-2" />
             Edit Skills
           </Button>
         ) : (
-          <div className="flex space-x-2">
-            <Button onClick={handleSaveSkills} size="sm" disabled={saving}>
+          <div className="flex gap-2">
+            <Button onClick={handleSaveSkills} size="sm" disabled={saving} className="btn-primary-rounded">
               {saving ? (
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
               ) : (
@@ -269,7 +282,7 @@ const SkillsSection = ({ skills, onUpdateSkills, isEditing, loading }) => {
               )}
               Save
             </Button>
-            <Button onClick={() => setEditingSkills(false)} variant="outline" size="sm" disabled={saving}>
+            <Button onClick={() => setEditingSkills(false)} variant="outline" size="sm" disabled={saving} className="btn-outline-rounded">
               Cancel
             </Button>
           </div>
@@ -278,29 +291,30 @@ const SkillsSection = ({ skills, onUpdateSkills, isEditing, loading }) => {
       <CardContent>
         {editingSkills ? (
           <div className="space-y-4">
-            <div className="flex space-x-2">
+            <div className="flex gap-2">
               <Input
                 placeholder="Add a new skill..."
                 value={newSkill}
                 onChange={(e) => setNewSkill(e.target.value)}
                 onKeyPress={handleKeyPress}
                 disabled={saving}
+                className="flex-1"
               />
-              <Button onClick={handleAddSkill} size="sm" disabled={saving}>
+              <Button onClick={handleAddSkill} size="sm" disabled={saving} className="btn-primary-rounded">
                 <Plus className="w-4 h-4" />
               </Button>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-3">
               {skillsData.map((skill) => (
                 <Badge 
                   key={skill.skill_id || skill.id} 
                   variant="secondary" 
-                  className="flex items-center space-x-2 px-3 py-1"
+                  className="flex items-center gap-2 px-3 py-2 bg-lumos-primary-light text-lumos-primary-dark border border-lumos-primary/30 hover:bg-lumos-primary/20 transition-colors"
                 >
                   <span>{skill.skill_name}</span>
                   <button
                     onClick={() => handleRemoveSkill(skill)}
-                    className="ml-2 hover:text-red-500"
+                    className="hover:text-red-500 transition-colors"
                     disabled={saving}
                   >
                     <X className="w-3 h-3" />
@@ -310,14 +324,17 @@ const SkillsSection = ({ skills, onUpdateSkills, isEditing, loading }) => {
             </div>
           </div>
         ) : (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-3">
             {skillsData.map((skill) => (
-              <Badge key={skill.skill_id || skill.id} variant="secondary" className="px-3 py-1">
+              <Badge 
+                key={skill.skill_id || skill.id} 
+                className="px-3 py-2 bg-lumos-primary-light text-lumos-primary-dark border border-lumos-primary/30 font-medium"
+              >
                 {skill.skill_name}
               </Badge>
             ))}
             {skillsData.length === 0 && (
-              <p className="text-gray-500 italic">No skills added yet. Click "Edit Skills" to get started.</p>
+              <p className="text-muted-foreground italic">No skills added yet. Click "Edit Skills" to get started.</p>
             )}
           </div>
         )}
@@ -746,8 +763,22 @@ const ProfilePage = () => {
   if (loading) {
     return (
       <Layout>
-        <div className="flex justify-center items-center h-screen">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        <div className="min-h-screen bg-gradient-to-br from-lumos-primary-light via-white to-blue-50">
+          <div className="container mx-auto px-4 py-8">
+            <div className="animate-fade-in">
+              <div className="text-center mb-12 space-y-4">
+                <div className="h-12 bg-muted/30 rounded-lg w-80 mx-auto animate-pulse"></div>
+                <div className="h-6 bg-muted/20 rounded w-96 mx-auto animate-pulse"></div>
+              </div>
+              
+              <div className="flex justify-center items-center h-32">
+                <div className="flex items-center gap-3">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-lumos-primary"></div>
+                  <span className="text-muted-foreground font-medium">Loading your profile...</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </Layout>
     );
@@ -755,38 +786,52 @@ const ProfilePage = () => {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-gray-50">
-        <div className="container mx-auto px-4 py-8">
-          {/* Header - Different for mentors */}
-          <div className="mb-8">
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">
-              {isPureMentor ? 'Mentor Profile' : 'My Profile'}
+      <div className="min-h-screen bg-gradient-to-br from-lumos-primary-light via-white to-blue-50 relative">
+        {/* <BackgroundPattern /> */}
+        
+        <div className="relative z-10 container mx-auto px-4 py-8">
+          {/* Header */}
+          <div className="text-center mb-12 animate-fade-in">
+            <div className="inline-flex items-center gap-3 bg-white/80 backdrop-blur-sm px-6 py-3 rounded-full border border-lumos-primary/20 mb-6">
+              <User className="w-5 h-5 text-lumos-primary" />
+              <span className="text-lumos-primary font-semibold">
+                Settings
+              </span>
+            </div>
+            <h1 className="text-4xl lg:text-6xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-black mb-4">
+              {isPureMentor ? 'Mentor Dashboard' : 'Your Profile'}
             </h1>
-            <p className="text-gray-600">
+            <p className="text-muted-foreground text-lg lg:text-xl max-w-2xl mx-auto leading-relaxed">
               {isPureMentor 
-                ? 'Manage your mentor profile and mentoring preferences' 
-                : 'Manage your account settings and track your learning progress'
+                ? 'Manage your mentor profile and track your mentoring impact' 
+                : 'Manage your account settings and track your learning journey'
               }
             </p>
           </div>
 
           {/* Alerts */}
           {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg">
-              {error}
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl backdrop-blur-sm animate-fade-in">
+              <div className="flex items-center gap-2">
+                <X className="w-4 h-4" />
+                {error}
+              </div>
             </div>
           )}
           
           {success && (
-            <div className="mb-6 p-4 bg-green-50 border border-green-200 text-green-700 rounded-lg">
-              {success}
+            <div className="mb-6 p-4 bg-green-50 border border-green-200 text-green-700 rounded-xl backdrop-blur-sm animate-fade-in">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="w-4 h-4" />
+                {success}
+              </div>
             </div>
           )}
 
           {uploading && (
-            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg">
-              <div className="flex items-center">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-700 mr-2"></div>
+            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 text-blue-700 rounded-xl backdrop-blur-sm animate-fade-in">
+              <div className="flex items-center gap-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-700"></div>
                 Uploading profile picture...
               </div>
             </div>
@@ -794,7 +839,7 @@ const ProfilePage = () => {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Left Column - Profile Card */}
-            <div className="lg:col-span-1">
+            <div className="lg:col-span-1 animate-slide-up">
               <ProfileCard
                 profile={profile}
                 isEditing={editMode}
@@ -807,7 +852,7 @@ const ProfilePage = () => {
             </div>
 
             {/* Right Column - Details and Settings */}
-            <div className="lg:col-span-2 space-y-6">
+            <div className="lg:col-span-2 space-y-8 animate-slide-up" style={{ animationDelay: '100ms' }}>
               {/* Skills Section */}
               <SkillsSection 
                 skills={skills}
@@ -816,11 +861,11 @@ const ProfilePage = () => {
                 loading={loading}
               />
 
-              {/* Profile Details - Different for mentors vs mentees */}
-              <Card>
+              {/* Profile Details */}
+              <Card className="card-minimal-hover">
                 <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <User className="w-5 h-5 mr-2" />
+                  <CardTitle className="flex items-center gap-2">
+                    <Settings className="w-5 h-5 text-lumos-primary" />
                     Profile Information
                   </CardTitle>
                 </CardHeader>
@@ -829,7 +874,7 @@ const ProfilePage = () => {
                     <div className="space-y-6">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <label className="block text-sm font-medium text-foreground mb-2">
                             Username
                           </label>
                           <Input
@@ -838,24 +883,25 @@ const ProfilePage = () => {
                             onChange={handleChange}
                             placeholder="Your username"
                             disabled={saving}
+                            className="focus:border-lumos-primary focus:ring-lumos-primary/20"
                           />
                         </div>
                         
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <label className="block text-sm font-medium text-foreground mb-2">
                             Email
                           </label>
                           <Input
                             name="email"
                             value={profile.email}
                             disabled
-                            className="bg-gray-50"
+                            className="bg-muted/50"
                           />
                         </div>
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-foreground mb-2">
                           Bio
                         </label>
                         <Textarea
@@ -865,6 +911,7 @@ const ProfilePage = () => {
                           placeholder="Tell us about yourself..."
                           rows={4}
                           disabled={saving}
+                          className="focus:border-lumos-primary focus:ring-lumos-primary/20"
                         />
                       </div>
 
@@ -872,7 +919,7 @@ const ProfilePage = () => {
                       {isMentor && (
                         <>
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                            <label className="block text-sm font-medium text-foreground mb-2">
                               Mentor Bio
                             </label>
                             <Textarea
@@ -882,12 +929,13 @@ const ProfilePage = () => {
                               placeholder="Tell potential mentees about your experience and what you can help with..."
                               rows={4}
                               disabled={saving}
+                              className="focus:border-lumos-primary focus:ring-lumos-primary/20"
                             />
                           </div>
 
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                              <label className="block text-sm font-medium text-foreground mb-2">
                                 Years of Experience
                               </label>
                               <Input
@@ -899,11 +947,12 @@ const ProfilePage = () => {
                                 disabled={saving}
                                 min="0"
                                 max="50"
+                                className="focus:border-lumos-primary focus:ring-lumos-primary/20"
                               />
                             </div>
 
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                              <label className="block text-sm font-medium text-foreground mb-2">
                                 Availability
                               </label>
                               <select
@@ -911,7 +960,7 @@ const ProfilePage = () => {
                                 value={profile.availability_hours}
                                 onChange={handleChange}
                                 disabled={saving}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50"
+                                className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-lumos-primary/20 focus:border-lumos-primary disabled:bg-muted/50 bg-white"
                               >
                                 <option value="">Select availability</option>
                                 <option value="1-2 hours per week">1-2 hours per week</option>
@@ -926,7 +975,7 @@ const ProfilePage = () => {
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <label className="block text-sm font-medium text-foreground mb-2">
                             Company
                           </label>
                           <Input
@@ -935,11 +984,12 @@ const ProfilePage = () => {
                             onChange={handleChange}
                             placeholder="Your company"
                             disabled={saving}
+                            className="focus:border-lumos-primary focus:ring-lumos-primary/20"
                           />
                         </div>
                         
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <label className="block text-sm font-medium text-foreground mb-2">
                             Role
                           </label>
                           <Input
@@ -948,13 +998,14 @@ const ProfilePage = () => {
                             onChange={handleChange}
                             placeholder="Your role"
                             disabled={saving}
+                            className="focus:border-lumos-primary focus:ring-lumos-primary/20"
                           />
                         </div>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <label className="block text-sm font-medium text-foreground mb-2">
                             Career Stage
                           </label>
                           <select
@@ -962,7 +1013,7 @@ const ProfilePage = () => {
                             value={profile.career_stage}
                             onChange={handleChange}
                             disabled={saving}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50"
+                            className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-lumos-primary/20 focus:border-lumos-primary disabled:bg-muted/50 bg-white"
                           >
                             <option value="student">Student</option>
                             <option value="early-career">Early Career (0-2 years)</option>
@@ -975,7 +1026,7 @@ const ProfilePage = () => {
                         {/* Mentee-specific fields */}
                         {isMentee && (
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                            <label className="block text-sm font-medium text-foreground mb-2">
                               Weekly Learning Hours
                             </label>
                             <Input
@@ -986,63 +1037,16 @@ const ProfilePage = () => {
                               min="1"
                               max="40"
                               disabled={saving}
+                              className="focus:border-lumos-primary focus:ring-lumos-primary/20"
                             />
                           </div>
                         )}
                       </div>
 
-                      {/* User Type Selection */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          I'd like to be a:
-                        </label>
-                        <div className="space-y-2">
-                          <div className="flex items-center">
-                            <input
-                              id="userType-mentee"
-                              name="user_type"
-                              type="radio"
-                              value="mentee"
-                              checked={profile.user_type === 'mentee'}
-                              onChange={handleChange}
-                              disabled={saving}
-                              className="h-4 w-4 text-blue-600"
-                            />
-                            <label htmlFor="userType-mentee" className="ml-2">Mentee (looking to learn)</label>
-                          </div>
-                          <div className="flex items-center">
-                            <input
-                              id="userType-mentor"
-                              name="user_type"
-                              type="radio"
-                              value="mentor"
-                              checked={profile.user_type === 'mentor'}
-                              onChange={handleChange}
-                              disabled={saving}
-                              className="h-4 w-4 text-blue-600"
-                            />
-                            <label htmlFor="userType-mentor" className="ml-2">Mentor (looking to guide others)</label>
-                          </div>
-                          <div className="flex items-center">
-                            <input
-                              id="userType-both"
-                              name="user_type"
-                              type="radio"
-                              value="both"
-                              checked={profile.user_type === 'both'}
-                              onChange={handleChange}
-                              disabled={saving}
-                              className="h-4 w-4 text-blue-600"
-                            />
-                            <label htmlFor="userType-both" className="ml-2">Both</label>
-                          </div>
-                        </div>
-                      </div>
-
                       {/* Additional mentee fields */}
                       {isMentee && (
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <label className="block text-sm font-medium text-foreground mb-2">
                             Preferred Learning Time
                           </label>
                           <select
@@ -1050,7 +1054,7 @@ const ProfilePage = () => {
                             value={profile.preferred_learning_time}
                             onChange={handleChange}
                             disabled={saving}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50"
+                            className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-lumos-primary/20 focus:border-lumos-primary disabled:bg-muted/50 bg-white"
                           >
                             <option value="morning">Morning</option>
                             <option value="afternoon">Afternoon</option>
@@ -1064,26 +1068,26 @@ const ProfilePage = () => {
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="flex items-center space-x-3">
-                        <Building className="w-5 h-5 text-gray-400" />
+                      <div className="flex items-center gap-3 p-4 bg-muted/30 rounded-xl">
+                        <Building className="w-5 h-5 text-lumos-primary" />
                         <div>
-                          <p className="text-sm text-gray-500">Company</p>
+                          <p className="text-sm text-muted-foreground">Company</p>
                           <p className="font-medium">{profile.company || 'Not specified'}</p>
                         </div>
                       </div>
                       
-                      <div className="flex items-center space-x-3">
-                        <Briefcase className="w-5 h-5 text-gray-400" />
+                      <div className="flex items-center gap-3 p-4 bg-muted/30 rounded-xl">
+                        <Briefcase className="w-5 h-5 text-lumos-primary" />
                         <div>
-                          <p className="text-sm text-gray-500">Role</p>
+                          <p className="text-sm text-muted-foreground">Role</p>
                           <p className="font-medium">{profile.role || 'Not specified'}</p>
                         </div>
                       </div>
                       
-                      <div className="flex items-center space-x-3">
-                        <GraduationCap className="w-5 h-5 text-gray-400" />
+                      <div className="flex items-center gap-3 p-4 bg-muted/30 rounded-xl">
+                        <GraduationCap className="w-5 h-5 text-lumos-primary" />
                         <div>
-                          <p className="text-sm text-gray-500">Career Stage</p>
+                          <p className="text-sm text-muted-foreground">Career Stage</p>
                           <p className="font-medium capitalize">
                             {profile.career_stage.replace('-', ' ')}
                           </p>
@@ -1093,17 +1097,17 @@ const ProfilePage = () => {
                       {/* Mentor-specific display fields */}
                       {isMentor && (
                         <>
-                          <div className="flex items-center space-x-3">
-                            <Star className="w-5 h-5 text-gray-400" />
+                          <div className="flex items-center gap-3 p-4 bg-muted/30 rounded-xl">
+                            <Star className="w-5 h-5 text-lumos-primary" />
                             <div>
-                              <p className="text-sm text-gray-500">Years of Experience</p>
+                              <p className="text-sm text-muted-foreground">Years of Experience</p>
                               <p className="font-medium">{profile.years_experience || 0} years</p>
                             </div>
                           </div>
-                          <div className="flex items-center space-x-3">
-                            <Clock className="w-5 h-5 text-gray-400" />
+                          <div className="flex items-center gap-3 p-4 bg-muted/30 rounded-xl">
+                            <Clock className="w-5 h-5 text-lumos-primary" />
                             <div>
-                              <p className="text-sm text-gray-500">Availability</p>
+                              <p className="text-sm text-muted-foreground">Availability</p>
                               <p className="font-medium">{profile.availability_hours || 'Not specified'}</p>
                             </div>
                           </div>
@@ -1112,19 +1116,19 @@ const ProfilePage = () => {
 
                       {/* Mentee-specific display fields */}
                       {isMentee && (
-                        <div className="flex items-center space-x-3">
-                          <Clock className="w-5 h-5 text-gray-400" />
+                        <div className="flex items-center gap-3 p-4 bg-muted/30 rounded-xl">
+                          <Clock className="w-5 h-5 text-lumos-primary" />
                           <div>
-                            <p className="text-sm text-gray-500">Weekly Learning</p>
+                            <p className="text-sm text-muted-foreground">Weekly Learning</p>
                             <p className="font-medium">{profile.weekly_learning_hours} hours</p>
                           </div>
                         </div>
                       )}
 
-                      <div className="flex items-center space-x-3">
-                        <User className="w-5 h-5 text-gray-400" />
+                      <div className="flex items-center gap-3 p-4 bg-muted/30 rounded-xl">
+                        <User className="w-5 h-5 text-lumos-primary" />
                         <div>
-                          <p className="text-sm text-gray-500">User Type</p>
+                          <p className="text-sm text-muted-foreground">User Type</p>
                           <p className="font-medium">
                             {profile.user_type === 'mentee' && 'Mentee'}
                             {profile.user_type === 'mentor' && 'Mentor'}
@@ -1137,87 +1141,97 @@ const ProfilePage = () => {
                 </CardContent>
               </Card>
 
-              {/* Progress Section - Different for mentors vs mentees */}
+              {/* Progress Section */}
               {isPureMentor ? (
-                <Card>
+                <Card className="card-minimal-hover">
                   <CardHeader>
-                    <CardTitle className="flex items-center">
-                      <Users className="w-5 h-5 mr-2" />
+                    <CardTitle className="flex items-center gap-2">
+                      <Users className="w-5 h-5 text-lumos-primary" />
                       Mentoring Impact
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <div className="text-center p-4 bg-blue-50 rounded-lg">
+                      <div className="text-center p-6 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border border-blue-200">
+                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center mx-auto mb-3">
+                          <Users className="w-6 h-6 text-white" />
+                        </div>
                         <div className="text-3xl font-bold text-blue-600 mb-1">
                           {profile.mentorStats.totalMentees}
                         </div>
-                        <div className="text-sm text-gray-600">Total Mentees</div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          All time
-                        </div>
+                        <div className="text-sm text-blue-700 font-medium">Total Mentees</div>
+                        <div className="text-xs text-blue-600 mt-1">All time connections</div>
                       </div>
                       
-                      <div className="text-center p-4 bg-green-50 rounded-lg">
+                      <div className="text-center p-6 bg-gradient-to-br from-green-50 to-green-100 rounded-xl border border-green-200">
+                        <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center mx-auto mb-3">
+                          <Heart className="w-6 h-6 text-white" />
+                        </div>
                         <div className="text-3xl font-bold text-green-600 mb-1">
                           {profile.mentorStats.activeConnections}
                         </div>
-                        <div className="text-sm text-gray-600">Active Connections</div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          Currently mentoring
-                        </div>
+                        <div className="text-sm text-green-700 font-medium">Active Connections</div>
+                        <div className="text-xs text-green-600 mt-1">Currently mentoring</div>
                       </div>
                       
-                      <div className="text-center p-4 bg-purple-50 rounded-lg">
+                      <div className="text-center p-6 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl border border-purple-200">
+                        <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center mx-auto mb-3">
+                          <TrendingUp className="w-6 h-6 text-white" />
+                        </div>
                         <div className="text-3xl font-bold text-purple-600 mb-1">
                           {profile.mentorStats.responseRate}%
                         </div>
-                        <div className="text-sm text-gray-600">Response Rate</div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          Request responsiveness
-                        </div>
+                        <div className="text-sm text-purple-700 font-medium">Response Rate</div>
+                        <div className="text-xs text-purple-600 mt-1">Request responsiveness</div>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
               ) : (
-                <Card>
+                <Card className="card-minimal-hover">
                   <CardHeader>
-                    <CardTitle className="flex items-center">
-                      <Trophy className="w-5 h-5 mr-2" />
+                    <CardTitle className="flex items-center gap-2">
+                      <Trophy className="w-5 h-5 text-lumos-primary" />
                       Learning Progress
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <div className="text-center p-4 bg-blue-50 rounded-lg">
+                      <div className="text-center p-6 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border border-blue-200">
+                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center mx-auto mb-3">
+                          <Target className="w-6 h-6 text-white" />
+                        </div>
                         <div className="text-3xl font-bold text-blue-600 mb-1">
                           {profile.stats.completionPercentage}%
                         </div>
-                        <div className="text-sm text-gray-600">Course Progress</div>
-                        <div className="text-xs text-gray-500 mt-1">
+                        <div className="text-sm text-blue-700 font-medium">Course Progress</div>
+                        <div className="text-xs text-blue-600 mt-1">
                           {profile.stats.completedModules}/{profile.stats.totalModules} modules
                         </div>
                       </div>
                       
-                      <div className="text-center p-4 bg-green-50 rounded-lg">
+                      <div className="text-center p-6 bg-gradient-to-br from-green-50 to-green-100 rounded-xl border border-green-200">
+                        <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center mx-auto mb-3">
+                          <Calendar className="w-6 h-6 text-white" />
+                        </div>
                         <div className="text-3xl font-bold text-green-600 mb-1">
                           {profile.stats.currentStreak}
                         </div>
-                        <div className="text-sm text-gray-600">Day Streak</div>
-                        <div className="text-xs text-gray-500 mt-1">
+                        <div className="text-sm text-green-700 font-medium">Day Streak</div>
+                        <div className="text-xs text-green-600 mt-1">
                           Best: {profile.stats.longestStreak} days
                         </div>
                       </div>
                       
-                      <div className="text-center p-4 bg-purple-50 rounded-lg">
+                      <div className="text-center p-6 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl border border-purple-200">
+                        <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center mx-auto mb-3">
+                          <Clock className="w-6 h-6 text-white" />
+                        </div>
                         <div className="text-3xl font-bold text-purple-600 mb-1">
                           {profile.stats.totalHoursLearned}h
                         </div>
-                        <div className="text-sm text-gray-600">Total Time</div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          This month
-                        </div>
+                        <div className="text-sm text-purple-700 font-medium">Total Time</div>
+                        <div className="text-xs text-purple-600 mt-1">This month</div>
                       </div>
                     </div>
                   </CardContent>
@@ -1225,32 +1239,42 @@ const ProfilePage = () => {
               )}
 
               {/* Account Settings */}
-              <Card>
+              <Card className="card-minimal-hover">
                 <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <User className="w-5 h-5 mr-2" />
+                  <CardTitle className="flex items-center gap-2">
+                    <Shield className="w-5 h-5 text-lumos-primary" />
                     Account Settings
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                    <div>
-                      <h3 className="font-medium">Sign Out</h3>
-                      <p className="text-sm text-gray-500">Sign out from this device</p>
+                  <div className="flex items-center justify-between p-4 border border-border rounded-xl bg-muted/20 hover:bg-muted/30 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-muted-foreground/20 to-muted-foreground/30 rounded-lg flex items-center justify-center">
+                        <LogOut className="w-5 h-5 text-muted-foreground" />
+                      </div>
+                      <div>
+                        <h3 className="font-medium">Sign Out</h3>
+                        <p className="text-sm text-muted-foreground">Sign out from this device</p>
+                      </div>
                     </div>
-                    <Button onClick={handleSignOut} variant="outline" disabled={loading}>
+                    <Button onClick={handleSignOut} variant="outline" disabled={loading} className="btn-outline-rounded">
                       {loading ? 'Signing out...' : 'Sign Out'}
                     </Button>
                   </div>
                   
-                  <div className="flex items-center justify-between p-4 border border-red-200 rounded-lg bg-red-50">
-                    <div>
-                      <h3 className="font-medium text-red-800">Delete Account</h3>
-                      <p className="text-sm text-red-600">Permanently delete your account</p>
+                  <div className="flex items-center justify-between p-4 border border-red-200 rounded-xl bg-red-50 hover:bg-red-100 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-red-600 rounded-lg flex items-center justify-center">
+                        <X className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="font-medium text-red-800">Delete Account</h3>
+                        <p className="text-sm text-red-600">Permanently delete your account</p>
+                      </div>
                     </div>
                     <Button 
                       onClick={() => alert('This feature is not implemented yet.')}
-                      className="bg-red-600 hover:bg-red-700"
+                      className="bg-red-600 hover:bg-red-700 text-white"
                     >
                       Delete
                     </Button>

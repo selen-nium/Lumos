@@ -8,15 +8,15 @@ import RegisterPage from './pages/auth/RegisterPage';
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 import ResetPasswordPage from './pages/auth/ResetPasswordPage';
 import OnboardingPage from './pages/OnboardingPage';
-import HomePage from './pages/HomePage';
-import ModulePage from './pages/ModulePage';
+import HomePage from './pages/home/HomePage';
+import ModulePage from './pages/home/ModulePage';
 import LearningStatsPage from './pages/LearningStatsPage';
 import CommunityPage from './pages/CommunityPage';
 import ProfilePage from './pages/ProfilePage';
 import InboxPage from './pages/InboxPage';
 import MessagesPage from './pages/MessagesPage';
-import StudyGroupsPage from './pages/StudyGroupsPage';
-import GroupChatPage from './pages/GroupChatPage';
+import StudyGroupsPage from './pages/studyGroup/StudyGroupsPage';
+import GroupChatPage from './pages/studyGroup/GroupChatPage';
 // import AdminPage from './pages/AdminPage';
 
 function App() {

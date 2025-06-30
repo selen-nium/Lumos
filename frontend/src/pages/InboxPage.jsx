@@ -8,7 +8,31 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { MessageCircle, Clock, CheckCircle, X, Users, Send, User } from 'lucide-react';
+import { 
+  MessageCircle, 
+  Clock, 
+  CheckCircle, 
+  X, 
+  Users, 
+  Send, 
+  User,
+  Heart,
+  Star,
+  Calendar,
+  Mail,
+  UserPlus,
+  UserCheck,
+  ArrowRight,
+  Sparkles
+} from 'lucide-react';
+
+// Background Pattern Component
+const BackgroundPattern = React.memo(() => (
+  <div className="absolute inset-0 overflow-hidden pointer-events-none">
+    <div className="absolute top-0 left-0 w-96 h-96 bg-gradient-to-br from-lumos-primary/10 to-lumos-primary-light/5 rounded-full filter blur-3xl transform -translate-x-1/2 -translate-y-1/2"></div>
+    <div className="absolute bottom-0 right-0 w-96 h-96 bg-gradient-to-tl from-lumos-primary/5 to-lumos-primary-muted/10 rounded-full filter blur-3xl transform translate-x-1/2 translate-y-1/2"></div>
+  </div>
+));
 
 const InboxPage = () => {
   const { user } = useAuth();
@@ -208,14 +232,14 @@ const InboxPage = () => {
 
   const getStatusBadge = status => {
     const map = {
-      pending: { variant: 'secondary', text: 'Pending', icon: Clock },
-      accepted: { variant: 'default', text: 'Accepted', icon: CheckCircle },
-      declined: { variant: 'destructive', text: 'Declined', icon: X }
+      pending: { variant: 'secondary', text: 'Pending', icon: Clock, color: 'text-yellow-600 bg-yellow-50 border-yellow-200' },
+      accepted: { variant: 'default', text: 'Accepted', icon: CheckCircle, color: 'text-green-600 bg-green-50 border-green-200' },
+      declined: { variant: 'destructive', text: 'Declined', icon: X, color: 'text-red-600 bg-red-50 border-red-200' }
     };
     const st = map[status] || map.pending;
     const Icon = st.icon;
     return (
-      <Badge variant={st.variant} className="flex items-center gap-1">
+      <Badge className={`flex items-center gap-1 ${st.color} font-medium`}>
         <Icon className="h-3 w-3" />
         {st.text}
       </Badge>
@@ -245,9 +269,22 @@ const InboxPage = () => {
   if (loading || !userProfile) {
     return (
       <Layout>
-        <div className="container mx-auto px-4 py-8 flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-          <span className="ml-3">Loading inbox...</span>
+        <div className="min-h-screen bg-gradient-to-br from-lumos-primary-light via-white to-blue-50">
+          <div className="container mx-auto px-4 py-8">
+            <div className="animate-fade-in">
+              <div className="text-center mb-12 space-y-4">
+                <div className="h-12 bg-muted/30 rounded-lg w-80 mx-auto animate-pulse"></div>
+                <div className="h-6 bg-muted/20 rounded w-96 mx-auto animate-pulse"></div>
+              </div>
+              
+              <div className="flex justify-center items-center h-32">
+                <div className="flex items-center gap-3">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-lumos-primary"></div>
+                  <span className="text-muted-foreground font-medium">Loading inbox...</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </Layout>
     );
@@ -258,310 +295,382 @@ const InboxPage = () => {
 
   return (
     <Layout>
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center gap-3 mb-6">
-          <MessageCircle className="h-8 w-8 text-primary" />
-          <div>
-            <h1 className="text-3xl font-bold">
+      <div className="min-h-screen bg-gradient-to-br from-lumos-primary-light via-white to-blue-50 relative">
+        <BackgroundPattern />
+        
+        <div className="relative z-10 container mx-auto px-4 py-8">
+          {/* Header */}
+          <div className="text-center mb-12 animate-fade-in">
+            <div className="inline-flex items-center gap-3 bg-white/80 backdrop-blur-sm px-6 py-3 rounded-full border border-lumos-primary/20 mb-6">
+              <MessageCircle className="w-5 h-5 text-lumos-primary" />
+              <span className="text-lumos-primary font-semibold">
+                {isPureMentor
+                  ? 'Mentor Inbox'
+                  : userProfile.user_type === 'mentee'
+                  ? 'Mentoring Hub'
+                  : 'Inbox'}
+              </span>
+            </div>
+            <h1 className="text-4xl lg:text-6xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-black mb-4">
               {isPureMentor
-                ? 'Mentor Inbox'
+                ? 'Mentor Dashboard'
                 : userProfile.user_type === 'mentee'
-                ? 'Mentoring'
-                : 'Inbox'}
+                ? 'Your Mentors'
+                : 'Your Network'}
             </h1>
-            <p className="text-gray-600">
+            <p className="text-muted-foreground text-lg lg:text-xl max-w-2xl mx-auto leading-relaxed">
               {isPureMentor
-                ? 'Manage your mentee connections and requests'
+                ? 'Manage your mentee connections and guide their learning journey'
                 : userProfile.user_type === 'mentee'
-                ? 'Your mentors and mentor requests'
-                : 'Manage your mentoring connections'}
+                ? 'Connect with mentors and accelerate your learning journey'
+                : 'Manage your mentoring connections and grow your network'}
             </p>
           </div>
-        </div>
 
-        <Tabs defaultValue={defaultTab} className="space-y-6">
-          <TabsList className={`grid w-full grid-cols-${tabs.length}`}>
-            {tabs.map(tab => {
-              const Icon = tab.icon;
-              return (
-                <TabsTrigger key={tab.value} value={tab.value} className="relative">
-                  <Icon className="h-4 w-4 mr-2" />
-                  {tab.label}
-                  {tab.count > 0 && (
-                    <Badge className="ml-2 h-5 w-5 p-0 text-xs" variant="destructive">
-                      {tab.count}
-                    </Badge>
-                  )}
-                </TabsTrigger>
-              );
-            })}
-          </TabsList>
+          <Tabs defaultValue={defaultTab} className="space-y-8">
+            <TabsList className={`grid w-full max-w-2xl mx-auto grid-cols-${tabs.length} bg-white/80 backdrop-blur-sm border border-lumos-primary/20`}>
+              {tabs.map(tab => {
+                const Icon = tab.icon;
+                return (
+                  <TabsTrigger 
+                    key={tab.value} 
+                    value={tab.value} 
+                    className="relative data-[state=active]:bg-lumos-primary data-[state=active]:text-black font-medium transition-all"
+                  >
+                    <Icon className="h-4 w-4 mr-2" />
+                    {tab.label}
+                    {/* {tab.count > 0 && (
+                      <Badge className="ml-2 h-5 w-5 p-0 text-xs bg-red-500 text-white border-0">
+                        {tab.count}
+                      </Badge>
+                    )} */}
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
 
-          {isMentor && (
-            <TabsContent value="incoming" className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h2 className="text-xl font-semibold">Incoming Connection Requests</h2>
-                <Badge variant="secondary">{incomingRequests.length} pending</Badge>
-              </div>
-              {incomingRequests.length > 0 ? (
-                incomingRequests.map(request => (
-                  <Card key={request.request_id} className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-6">
-                      <div className="flex items-start gap-4">
-                        <Avatar className="w-12 h-12">
-                          {request.profiles?.profile_picture_url ? (
-                            <AvatarImage
-                              src={request.profiles.profile_picture_url}
-                              alt={request.profiles.username || ''}
-                            />
-                          ) : (
-                            <AvatarFallback className="bg-primary text-white">
-                              {getInitials(request.profiles?.username || request.profiles?.email)}
-                            </AvatarFallback>
-                          )}
-                        </Avatar>
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between mb-2">
-                            <div>
-                              <h3 className="font-semibold">
-                                {request.profiles?.username || 'Anonymous User'}
-                              </h3>
-                              <p className="text-sm text-gray-600">
-                                {request.profiles?.career_stage && (
-                                  <span className="capitalize">
-                                    {request.profiles.career_stage.replace('-', ' ')} •{' '}
+            {/* Incoming Requests Tab */}
+            {isMentor && (
+              <TabsContent value="incoming" className="space-y-6 animate-slide-up">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-2xl font-bold text-foreground">Incoming Connection Requests</h2>
+                  <Badge variant="secondary" className="bg-lumos-primary-light text-lumos-primary-dark border-lumos-primary/30">
+                    {incomingRequests.length} pending
+                  </Badge>
+                </div>
+                
+                {incomingRequests.length > 0 ? (
+                  <div className="grid gap-6">
+                    {incomingRequests.map((request, index) => (
+                      <Card key={request.request_id} className="card-minimal-hover overflow-hidden group" style={{ animationDelay: `${index * 100}ms` }}>
+                        <CardContent className="p-6">
+                          <div className="flex items-start gap-4">
+                            <Avatar className="w-16 h-16 ring-2 ring-lumos-primary/20">
+                              {request.profiles?.profile_picture_url ? (
+                                <AvatarImage
+                                  src={request.profiles.profile_picture_url}
+                                  alt={request.profiles.username || ''}
+                                />
+                              ) : (
+                                <AvatarFallback className="bg-gradient-to-br from-lumos-primary to-lumos-primary-dark text-white text-lg font-semibold">
+                                  {getInitials(request.profiles?.username || request.profiles?.email)}
+                                </AvatarFallback>
+                              )}
+                            </Avatar>
+                            
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between mb-3">
+                                <div>
+                                  <h3 className="text-xl font-bold text-foreground">
+                                    {request.profiles?.username || 'Anonymous User'}
+                                  </h3>
+                                  <p className="text-muted-foreground flex items-center gap-2">
+                                    {request.profiles?.career_stage && (
+                                      <span className="capitalize bg-lumos-primary-light text-lumos-primary-dark px-2 py-1 rounded-full text-xs font-medium">
+                                        {request.profiles.career_stage.replace('-', ' ')}
+                                      </span>
+                                    )}
+                                    {request.profiles?.role}
+                                    {request.profiles?.company && ` at ${request.profiles.company}`}
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                  <Calendar className="h-4 w-4" />
+                                  {new Date(request.created_at).toLocaleDateString('en-US', {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    year: 'numeric'
+                                  })}
+                                </div>
+                              </div>
+                              
+                              {request.message && (
+                                <div className="bg-gradient-to-r from-lumos-primary-light to-blue-50 p-4 rounded-xl border-l-4 border-lumos-primary mb-4 relative">
+                                  <Mail className="absolute top-3 right-3 h-4 w-4 text-lumos-primary/60" />
+                                  <p className="text-sm text-lumos-primary-dark font-medium italic leading-relaxed">
+                                    "{request.message}"
+                                  </p>
+                                </div>
+                              )}
+                              
+                              <div className="flex gap-3">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleConnectionResponse(request.request_id, 'declined')}
+                                  className="btn-outline-rounded hover:bg-red-50 hover:border-red-300 hover:text-red-600"
+                                >
+                                  <X className="h-4 w-4 mr-2" />
+                                  Decline
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleConnectionResponse(request.request_id, 'accepted')}
+                                  className="btn-primary-rounded hover-lift"
+                                >
+                                  <CheckCircle className="h-4 w-4 mr-2" />
+                                  Accept
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <Card className="card-minimal text-center py-16">
+                    <CardContent>
+                      <div className="w-24 h-24 bg-gradient-to-br from-lumos-primary-light to-lumos-primary/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <Users className="h-12 w-12 text-lumos-primary" />
+                      </div>
+                      <h3 className="text-2xl font-bold mb-3">No incoming requests</h3>
+                      <p className="text-muted-foreground text-lg max-w-md mx-auto leading-relaxed">
+                        Connection requests from mentees will appear here. Your expertise is valuable - mentees will find you!
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+              </TabsContent>
+            )}
+
+            {/* Sent Requests Tab */}
+            {isMentee && (
+              <TabsContent value="sent" className="space-y-6 animate-slide-up">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-2xl font-bold text-foreground">My Mentor Requests</h2>
+                  <Badge variant="secondary" className="bg-lumos-primary-light text-lumos-primary-dark border-lumos-primary/30">
+                    {sentRequests.length} total
+                  </Badge>
+                </div>
+                
+                {sentRequests.length > 0 ? (
+                  <div className="grid gap-6">
+                    {sentRequests.map((request, index) => (
+                      <Card key={request.request_id} className="card-minimal-hover overflow-hidden" style={{ animationDelay: `${index * 100}ms` }}>
+                        <CardContent className="p-6">
+                          <div className="flex items-start gap-4">
+                            <Avatar className="w-16 h-16 ring-2 ring-lumos-primary/20">
+                              {request.profiles?.profile_picture_url ? (
+                                <AvatarImage
+                                  src={request.profiles.profile_picture_url}
+                                  alt={request.profiles.username || ''}
+                                />
+                              ) : (
+                                <AvatarFallback className="bg-gradient-to-br from-lumos-primary to-lumos-primary-dark text-white text-lg font-semibold">
+                                  {getInitials(request.profiles?.username || request.profiles?.email)}
+                                </AvatarFallback>
+                              )}
+                            </Avatar>
+                            
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between mb-3">
+                                <div>
+                                  <h3 className="text-xl font-bold text-foreground">
+                                    {request.profiles?.username || 'Anonymous Mentor'}
+                                  </h3>
+                                  <p className="text-muted-foreground">
+                                    {request.profiles?.role}
+                                    {request.profiles?.company && ` at ${request.profiles.company}`}
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {getStatusBadge(request.status)}
+                                </div>
+                              </div>
+                              
+                              {request.message && (
+                                <div className="bg-muted/50 p-3 rounded-lg mb-3 border border-border">
+                                  <p className="text-sm text-muted-foreground">
+                                    <span className="font-medium">Your message:</span> "{request.message}"
+                                  </p>
+                                </div>
+                              )}
+                              
+                              <div className="flex justify-between text-xs text-muted-foreground">
+                                <span className="flex items-center gap-1">
+                                  <Send className="h-3 w-3" />
+                                  Sent: {new Date(request.created_at).toLocaleDateString()}
+                                </span>
+                                {request.responded_at && (
+                                  <span className="flex items-center gap-1">
+                                    <Clock className="h-3 w-3" />
+                                    Responded: {new Date(request.responded_at).toLocaleDateString()}
                                   </span>
                                 )}
-                                {request.profiles?.role}
-                                {request.profiles?.company && ` at ${request.profiles.company}`}
-                              </p>
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              {new Date(request.created_at).toLocaleDateString()}
+                              </div>
                             </div>
                           </div>
-                          {request.message && (
-                            <div className="bg-blue-50 p-3 rounded-lg border-l-4 border-blue-400 mb-4">
-                              <p className="text-sm italic">"{request.message}"</p>
-                            </div>
-                          )}
-                          <div className="flex gap-3">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleConnectionResponse(request.request_id, 'declined')}
-                            >
-                              <X className="h-4 w-4 mr-2" />
-                              Decline
-                            </Button>
-                            <Button
-                              size="sm"
-                              onClick={() => handleConnectionResponse(request.request_id, 'accepted')}
-                            >
-                              <CheckCircle className="h-4 w-4 mr-2" />
-                              Accept
-                            </Button>
-                          </div>
-                        </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <Card className="card-minimal text-center py-16">
+                    <CardContent>
+                      <div className="w-24 h-24 bg-gradient-to-br from-lumos-primary-light to-lumos-primary/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <Send className="h-12 w-12 text-lumos-primary" />
                       </div>
+                      <h3 className="text-2xl font-bold mb-3">No requests sent</h3>
+                      <p className="text-muted-foreground text-lg max-w-md mx-auto leading-relaxed mb-6">
+                        You haven't sent any mentor requests yet. Start your learning journey by connecting with experienced mentors.
+                      </p>
+                      <Button asChild className="btn-primary-rounded px-8 py-3 text-base font-semibold hover-lift">
+                        <Link to="/community">
+                          <Users className="h-5 w-5 mr-2" />
+                          Find Mentors
+                        </Link>
+                      </Button>
                     </CardContent>
                   </Card>
-                ))
-              ) : (
-                <Card className="p-8 text-center">
-                  <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium mb-2">No incoming requests</h3>
-                  <p className="text-gray-600">Connection requests from mentees will appear here.</p>
-                </Card>
-              )}
-            </TabsContent>
-          )}
+                )}
+              </TabsContent>
+            )}
 
-          {isMentee && (
-            <TabsContent value="sent" className="space-y-4">
+            {/* Connections Tab */}
+            <TabsContent value="connections" className="space-y-6 animate-slide-up">
               <div className="flex justify-between items-center">
-                <h2 className="text-xl font-semibold">
-                  {isPureMentor ? 'Sent Requests' : 'My Mentor Requests'}
+                <h2 className="text-2xl font-bold text-foreground">
+                  {isPureMentor
+                    ? 'My Mentees'
+                    : userProfile.user_type === 'mentee'
+                    ? 'My Mentors'
+                    : 'My Connections'}
                 </h2>
-                <Badge variant="secondary">{sentRequests.length} total</Badge>
+                <Badge variant="secondary" className="bg-green-50 text-green-600 border-green-200">
+                  {connections.length} active
+                </Badge>
               </div>
-              {sentRequests.length > 0 ? (
-                sentRequests.map(request => (
-                  <Card key={request.request_id} className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-6">
-                      <div className="flex items-start gap-4">
-                        <Avatar className="w-12 h-12">
-                          {request.profiles?.profile_picture_url ? (
-                            <AvatarImage
-                              src={request.profiles.profile_picture_url}
-                              alt={request.profiles.username || ''}
-                            />
-                          ) : (
-                            <AvatarFallback className="bg-primary text-white">
-                              {getInitials(request.profiles?.username || request.profiles?.email)}
-                            </AvatarFallback>
-                          )}
-                        </Avatar>
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between mb-2">
-                            <div>
-                              <h3 className="font-semibold">
-                                {request.profiles?.username || 'Anonymous Mentor'}
-                              </h3>
-                              <p className="text-sm text-gray-600">
-                                {request.profiles?.role}
-                                {request.profiles?.company && ` at ${request.profiles.company}`}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              {getStatusBadge(request.status)}
-                            </div>
-                          </div>
-                          {request.message && (
-                            <div className="bg-gray-50 p-3 rounded-lg mb-3">
-                              <p className="text-sm">
-                                Your message: "{request.message}"
-                              </p>
-                            </div>
-                          )}
-                          <div className="flex justify-between text-xs text-gray-500">
-                            <span>Sent: {new Date(request.created_at).toLocaleDateString()}</span>
-                            {request.responded_at && (
-                              <span>
-                                Responded:{' '}
-                                {new Date(request.responded_at).toLocaleDateString()}
-                              </span>
+              
+              {connections.length > 0 ? (
+                <div className="grid gap-6">
+                  {connections.map((connection, index) => (
+                    <Card key={connection.request_id} className="card-minimal-hover overflow-hidden group" style={{ animationDelay: `${index * 100}ms` }}>
+                      <CardContent className="p-6">
+                        <div className="flex items-start gap-4">
+                          <Avatar className="w-16 h-16 ring-2 ring-green-200">
+                            {connection.other_person?.profile_picture_url ? (
+                              <AvatarImage
+                                src={connection.other_person.profile_picture_url}
+                                alt={connection.other_person.username || ''}
+                              />
+                            ) : (
+                              <AvatarFallback className="bg-gradient-to-br from-green-500 to-emerald-500 text-white text-lg font-semibold">
+                                {getInitials(
+                                  connection.other_person?.username ||
+                                    connection.other_person?.email
+                                )}
+                              </AvatarFallback>
                             )}
+                          </Avatar>
+                          
+                          <div className="flex-1">  
+                            <div className="flex items-center justify-between mb-3">
+                              <div>
+                                <h3 className="text-xl font-bold text-foreground">
+                                  {connection.other_person?.username || 'Anonymous User'}
+                                </h3>
+                                <p className="text-muted-foreground flex items-center gap-2">
+                                  {connection.other_person?.career_stage && (
+                                    <span className="capitalize bg-lumos-primary-light text-lumos-primary-dark px-2 py-1 rounded-full text-xs font-medium">
+                                      {connection.other_person.career_stage.replace('-', ' ')}
+                                    </span>
+                                  )}
+                                  {connection.other_person?.role}
+                                  {connection.other_person?.company &&
+                                    ` at ${connection.other_person.company}`}
+                                </p>
+                              </div>
+                              <Badge className="bg-green-50 text-green-700 border-green-300 font-medium">
+                                <Heart className="h-3 w-3 mr-1" />
+                                {connection.connection_type === 'mentor'
+                                  ? isPureMentor
+                                    ? 'Your Mentee'
+                                    : 'Your Mentee'
+                                  : userProfile.user_type === 'mentee'
+                                  ? 'Your Mentor'
+                                  : 'Your Mentor'}
+                              </Badge>
+                            </div>
+                            
+                            <div className="flex justify-between items-center mt-4">
+                              <div className="text-xs text-muted-foreground flex items-center gap-1">
+                                <UserCheck className="h-3 w-3" />
+                                Connected: {new Date(connection.responded_at).toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  year: 'numeric'
+                                })}
+                              </div>
+                              <div className="flex gap-3">
+                                <Button size="sm" variant="outline" asChild className="btn-outline-rounded hover-lift">
+                                  <Link to={`/messages/${connection.request_id}`}>
+                                    <MessageCircle className="h-4 w-4 mr-2" />
+                                    Message
+                                  </Link>
+                                </Button>
+                              </div>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
               ) : (
-                <Card className="p-8 text-center">
-                  <Send className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium mb-2">No requests sent</h3>
-                  <p className="text-gray-600 mb-4">
-                    You haven't sent any mentor requests yet.
-                  </p>
-                  <Button asChild>
-                    <Link to="/community">
-                      <Users className="h-4 w-4 mr-2" />
-                      Find Mentors
-                    </Link>
-                  </Button>
-                </Card>
-              )}
-            </TabsContent>
-          )}
-
-          <TabsContent value="connections" className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold">
-                {isPureMentor
-                  ? 'My Mentees'
-                  : userProfile.user_type === 'mentee'
-                  ? 'My Mentors'
-                  : 'My Connections'}
-              </h2>
-              <Badge variant="secondary">{connections.length} active</Badge>
-            </div>
-            {connections.length > 0 ? (
-              connections.map(connection => (
-                <Card key={connection.request_id} className="hover:shadow-md transition-shadow">
-                  <CardContent className="p-6">
-                    <div className="flex items-start gap-4">
-                      <Avatar className="w-12 h-12">
-                        {connection.other_person?.profile_picture_url ? (
-                          <AvatarImage
-                            src={connection.other_person.profile_picture_url}
-                            alt={connection.other_person.username || ''}
-                          />
-                        ) : (
-                          <AvatarFallback className="bg-green-100 text-green-800">
-                            {getInitials(
-                              connection.other_person?.username ||
-                                connection.other_person?.email
-                            )}
-                          </AvatarFallback>
-                        )}
-                      </Avatar>
-                      <div className="flex-1">  
-                        <div className="flex items-center justify-between mb-2">
-                          <div>
-                            <h3 className="font-semibold">
-                              {connection.other_person?.username || 'Anonymous User'}
-                            </h3>
-                            <p className="text-sm text-gray-600">
-                              {connection.other_person?.career_stage && (
-                                <span className="capitalize">
-                                  {connection.other_person.career_stage.replace('-', ' ')} •{' '}
-                                </span>
-                              )}
-                              {connection.other_person?.role}
-                              {connection.other_person?.company &&
-                                ` at ${connection.other_person.company}`}
-                            </p>
-                          </div>
-                          <Badge variant="outline" className="text-green-700 border-green-300">
-                            {connection.connection_type === 'mentor'
-                              ? isPureMentor
-                                ? 'Your Mentee'
-                                : 'Your Mentee'
-                              : userProfile.user_type === 'mentee'
-                              ? 'Your Mentor'
-                              : 'Your Mentor'}
-                          </Badge>
-                        </div>
-                        <div className="flex justify-between items-center mt-4">
-                          <div className="text-xs text-gray-500">
-                            Connected:{' '}
-                            {new Date(connection.responded_at).toLocaleDateString()}
-                          </div>
-                          <div className="flex gap-2">
-                            <Button size="sm" variant="outline" asChild>
-                              <Link to={`/messages/${connection.request_id}`}>
-                                <MessageCircle className="h-4 w-4 mr-2" />
-                                Message
-                              </Link>
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
+                <Card className="card-minimal text-center py-16">
+                  <CardContent>
+                    <div className="w-24 h-24 bg-gradient-to-br from-lumos-primary-light to-lumos-primary/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                      <CheckCircle className="h-12 w-12 text-lumos-primary" />
                     </div>
+                    <h3 className="text-2xl font-bold mb-3">
+                      {isPureMentor
+                        ? 'No mentees yet'
+                        : userProfile.user_type === 'mentee'
+                        ? 'No mentors yet'
+                        : 'No connections yet'}
+                    </h3>
+                    <p className="text-muted-foreground text-lg max-w-md mx-auto leading-relaxed mb-6">
+                      {isPureMentor
+                        ? 'Mentees you accept will appear here. Share your knowledge and help others grow!'
+                        : userProfile.user_type === 'mentee'
+                        ? 'Mentors who accept your requests will appear here. Start connecting with experienced professionals.'
+                        : 'Your accepted mentoring connections will appear here. Build meaningful professional relationships.'}
+                    </p>
+                    {userProfile.user_type === 'mentee' && (
+                      <Button asChild className="btn-primary-rounded px-8 py-3 text-base font-semibold hover-lift">
+                        <Link to="/community">
+                          <Users className="h-5 w-5 mr-2" />
+                          Find Mentors
+                        </Link>
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
-              ))
-            ) : (
-              <Card className="p-8 text-center">
-                <CheckCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium mb-2">
-                  {isPureMentor
-                    ? 'No mentees yet'
-                    : userProfile.user_type === 'mentee'
-                    ? 'No mentors yet'
-                    : 'No connections yet'}
-                </h3>
-                <p className="text-gray-600 mb-4">
-                  {isPureMentor
-                    ? 'Mentees you accept will appear here.'
-                    : userProfile.user_type === 'mentee'
-                    ? 'Mentors who accept your requests will appear here.'
-                    : 'Your accepted mentoring connections will appear here.'}
-                </p>
-                {userProfile.user_type === 'mentee' && (
-                  <Button asChild>
-                    <Link to="/community">
-                      <Users className="h-4 w-4 mr-2" />
-                      Find Mentors
-                    </Link>
-                  </Button>
-                )}
-              </Card>
-            )}
-          </TabsContent>
-        </Tabs>
+              )}
+            </TabsContent>
+          </Tabs>
+        </div>
       </div>
     </Layout>
   );

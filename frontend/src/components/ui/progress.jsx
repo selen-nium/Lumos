@@ -1,27 +1,76 @@
-import * as React from "react"
-import * as ProgressPrimitive from "@radix-ui/react-progress"
+import React, { useEffect, useState } from 'react';
 
-import { cn } from "@/lib/utils"
-
-function Progress({
-  className,
-  value,
-  ...props
-}) {
+const Progress = ({ 
+  value = 0, 
+  max = 100, 
+  className = '', 
+  variant = 'default',
+  showPercentage = false,
+  size = 'default'
+}) => {
+  const [currentValue, setCurrentValue] = useState(value);
+  
+  useEffect(() => {
+    setCurrentValue(value);
+  }, [value]);
+  
+  const percentage = Math.min(Math.max((currentValue / max) * 100, 0), 100);
+  
+  const sizeClasses = {
+    sm: 'h-1',
+    default: 'h-2',
+    lg: 'h-3',
+    xl: 'h-4'
+  };
+  
+  const variantClasses = {
+    default: {
+      bg: 'bg-gray-200',
+      fill: 'bg-gradient-to-r from-blue-500 to-blue-600'
+    },
+    lumos: {
+      bg: 'bg-gray-200',
+      fill: 'bg-gradient-to-r from-blue-500 to-blue-600'
+    },
+    success: {
+      bg: 'bg-gray-200',
+      fill: 'bg-gradient-to-r from-green-500 to-green-600'
+    }
+  };
+  
+  const currentVariant = variantClasses[variant] || variantClasses.default;
+  const heightClass = sizeClasses[size] || sizeClasses.default;
+  
   return (
-    <ProgressPrimitive.Root
-      data-slot="progress"
-      className={cn(
-        "bg-primary/20 relative h-2 w-full overflow-hidden rounded-full",
-        className
+    <div className={`relative ${className}`}>
+      <div 
+        className={`
+          relative overflow-hidden rounded-full ${currentVariant.bg} ${heightClass}
+          transition-all duration-700 ease-out
+        `}
+        role="progressbar"
+        aria-valuenow={currentValue}
+        aria-valuemin={0}
+        aria-valuemax={max}
+      >
+        <div
+          className={`
+            h-full rounded-full transition-all duration-700 ease-out
+            ${currentVariant.fill}
+          `}
+          style={{ 
+            width: `${percentage}%`,
+          }}
+        />
+      </div>
+      
+      {showPercentage && (
+        <div className="text-xs text-center mt-1 font-medium">
+          {percentage.toFixed(1)}%
+        </div>
       )}
-      {...props}>
-      <ProgressPrimitive.Indicator
-        data-slot="progress-indicator"
-        className="bg-primary h-full w-full flex-1 transition-all"
-        style={{ transform: `translateX(-${100 - (value || 0)}%)` }} />
-    </ProgressPrimitive.Root>
+    </div>
   );
-}
+};
 
-export { Progress }
+export default Progress;

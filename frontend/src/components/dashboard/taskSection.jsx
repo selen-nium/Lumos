@@ -16,7 +16,6 @@ import {
 
 const TaskCard = ({ task, index, onToggleCompletion }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  // ✅ FIXED: Use task.isCompleted from props instead of local state
   const isCompleted = task.isCompleted || false;
 
   const handleToggleExpand = () => {
@@ -25,8 +24,6 @@ const TaskCard = ({ task, index, onToggleCompletion }) => {
 
   const handleToggleCompletion = () => {
     const newCompletionStatus = !isCompleted;
-    
-    // Call the parent function to handle the completion logic
     if (onToggleCompletion) {
       onToggleCompletion(task.task_id, newCompletionStatus);
     }
@@ -62,15 +59,12 @@ const TaskCard = ({ task, index, onToggleCompletion }) => {
     }
   };
 
-  // ✅ DEBUG: Log the task completion status
-  console.log(`🔍 TaskCard ${task.task_title}: isCompleted = ${isCompleted}`);
-
   return (
     <Card className={`transition-all duration-200 hover:shadow-md ${
       isCompleted ? 'bg-green-50 border-green-200' : 'bg-background'
     }`}>
       <CardContent className="p-0">
-        {/* Task Header - Always Visible */}
+        {/* Task Header */}
         <div className="p-4">
           <div className="flex items-start justify-between">
             <div className="flex items-start gap-3 flex-1">
@@ -146,9 +140,9 @@ const TaskCard = ({ task, index, onToggleCompletion }) => {
             {/* Expand/Collapse Button */}
             <Button
               variant="ghost"
-              size="sm"
+              size='lg'
               onClick={handleToggleExpand}
-              className="ml-2 flex-shrink-0"
+              className="ml-2 w-20 h-20 flex-shrink-0"
               aria-label={isExpanded ? "Collapse details" : "Expand details"}
             >
               {isExpanded ? (
@@ -218,9 +212,7 @@ const TaskCard = ({ task, index, onToggleCompletion }) => {
 
 // Main Tasks Section Component
 const TasksSection = ({ tasks = [], onTaskCompletion }) => {
-  // ✅ FIXED: Remove local state and use props directly
-  // This ensures the component always reflects the current parent state
-  
+
   const handleToggleCompletion = async (taskId, isCompleted) => {
     try {
       console.log(`🔄 TasksSection: Updating task ${taskId} to ${isCompleted ? 'completed' : 'incomplete'}`);
@@ -233,20 +225,11 @@ const TasksSection = ({ tasks = [], onTaskCompletion }) => {
       console.log(`✅ TasksSection: Task ${taskId} marked as ${isCompleted ? 'completed' : 'incomplete'}`);
     } catch (error) {
       console.error('❌ TasksSection: Failed to update task completion:', error);
-      // Don't need to revert state since we're using parent state
     }
   };
 
-  // ✅ FIXED: Use tasks prop directly instead of local state
   const completedCount = tasks.filter(task => task.isCompleted).length;
   const totalCount = tasks.length;
-
-  // ✅ DEBUG: Log the tasks received from parent
-  console.log('🔍 TasksSection received tasks:', tasks.map(t => ({ 
-    id: t.task_id, 
-    title: t.task_title, 
-    completed: t.isCompleted 
-  })));
 
   return (
     <div className="space-y-6">
@@ -254,7 +237,7 @@ const TasksSection = ({ tasks = [], onTaskCompletion }) => {
       {/* Progress Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-xl font-semibold">Hands-on Tasks</h2>
+          <h2 className="text-2xl font-semibold">Hands-on Tasks</h2>
           <p className="text-muted-foreground">
             {completedCount} of {totalCount} tasks completed
           </p>

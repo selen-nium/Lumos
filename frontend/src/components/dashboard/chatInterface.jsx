@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import ReactMarkdown from 'react-markdown'; // NEW: import ReactMarkdown
+import ReactMarkdown from 'react-markdown';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from '@/components/ui/card';
-// import { Badge } from '@/components/ui/badge';
 import { 
   Send, 
   Bot, 
@@ -18,6 +17,28 @@ import {
   Zap
 } from 'lucide-react';
 
+const TypingIndicator = ({ isModifying }) => (
+  <div className="flex justify-start mb-4">
+    <div className="flex items-start gap-3 max-w-[80%] message-slide-in">
+      <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+        <Bot className="h-4 w-4 text-muted-foreground" />
+      </div>
+      <div className="bg-white border border-gray-200 rounded-2xl px-4 py-3 shadow-sm">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
+            <div className="w-2 h-2 bg-gray-400 rounded-full typing-dot"></div>
+            <div className="w-2 h-2 bg-gray-400 rounded-full typing-dot"></div>
+            <div className="w-2 h-2 bg-gray-400 rounded-full typing-dot"></div>
+          </div>
+          <span className="text-sm text-gray-600 ml-1">
+            {isModifying ? 'Modifying your roadmap...' : 'Thinking...'}
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
 const ChatInterface = ({ user, roadmapProgress, modules, onRoadmapUpdate }) => {
   const [chatHistory, setChatHistory] = useState([
     {
@@ -25,16 +46,19 @@ const ChatInterface = ({ user, roadmapProgress, modules, onRoadmapUpdate }) => {
       content: `Hi${user?.username ? ` ${user.username}` : ''}! 👋 I'm your learning assistant. I can help you with:
       
 • 📚 Understanding your learning roadmap
+
 • 🎯 Setting study goals and schedules  
-• 📝 Summarizing completed modules
+
+• 📝 Summarising completed modules
+
 • 💡 Suggesting next steps
-• 🔄 **Modifying your learning plan** - NEW!
+
+• 🔄 Modifying your learning plan
 
 **Try asking me to:**
 - "Make my roadmap more challenging"
 - "Add more JavaScript modules"
 - "Slow down the pace"
-- "Remove beginner topics I already know"
 
 What would you like to work on today?`,
       timestamp: new Date().toISOString()
@@ -198,51 +222,65 @@ What would you like to work on today?`,
     return (
       <div 
         key={idx} 
-        className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4`}
+        className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-6 message-slide-in`}
       >
-        <div className={`flex items-start gap-3 max-w-[80%] ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
-          {/* Avatar */}
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-            isUser ? 'bg-blue-100' : isError ? 'bg-red-100' : 'bg-muted'
+        <div className={`flex items-start gap-3 max-w-[85%] ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
+          {/* Enhanced Avatar with amber theme */}
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm ${
+            isUser 
+              ? 'bg-gradient-to-br from-blue-500 to-blue-600' 
+              : isError 
+                ? 'bg-gradient-to-br from-red-500 to-red-600' 
+                : 'bg-gradient-to-br from-gray-100 to-gray-200 border border-gray-300'
           }`}>
             {isUser ? (
-              <User className="h-4 w-4 text-blue-600" />
+              <User className="h-4 w-4 text-white" />
             ) : isError ? (
-              <AlertCircle className="h-4 w-4 text-red-600" />
+              <AlertCircle className="h-4 w-4 text-white" />
             ) : (
-              <Bot className="h-4 w-4 text-muted-foreground" />
+              <Bot className="h-4 w-4 text-gray-600" />
             )}
           </div>
           
-          {/* Message bubble */}
-          <div className={`relative rounded-lg px-4 py-3 shadow-sm ${
+          {/*  Message bubble */}
+          <div className={`relative rounded-2xl px-4 py-3 shadow-sm border transition-all duration-200 ${
             isUser 
-              ? 'bg-blue-600 text-white' 
+              ? 'chat-user-message' 
               : isError 
-                ? 'bg-red-50 text-red-800 border border-red-200'
-                : 'bg-muted text-muted-foreground'
+                ? 'bg-red-50 text-red-800 border-red-200 shadow-red-100'
+                : 'bg-white text-gray-800 border-gray-200 shadow-gray-100 hover:shadow-md'
           }`}>
-            <div className="prose prose-sm break-words">
+            
+            {/* Message tail*/}
+            <div className={`absolute top-3 w-3 h-3 transform rotate-45 ${
+              isUser 
+                ? 'right-[-6px] bg-gradient-to-br from-blue-500 to-blue-600 border-r border-b border-blue-600' 
+                : isError
+                  ? 'left-[-6px] bg-red-50 border-l border-t border-red-200'
+                  : 'left-[-6px] bg-white border-l border-t border-gray-200'
+            }`}/>
+            
+            <div className="prose prose-sm break-words relative z-10">
               {msg.content && <ReactMarkdown>{msg.content}</ReactMarkdown>}
             </div>
             
             {msg.timestamp && (
-              <div className={`text-xs mt-2 ${
-                isUser ? 'text-blue-100' : 'text-muted-foreground/60'
+              <div className={`text-xs mt-2 font-medium ${
+                isUser ? 'text-blue-900' : 'text-gray-500'
               }`}>
                 {formatTimestamp(msg.timestamp)}
               </div>
             )}
             
-            {/* Roadmap update notification */}
+            {/* Roadmap update notification with enhanced styling */}
             {msg.roadmapUpdated && (
-              <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-                <div className="flex items-center gap-2 text-green-800 text-sm font-medium">
+              <div className="mt-3 p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
+                <div className="flex items-center gap-2 text-emerald-800 text-sm font-medium">
                   <CheckCircle className="h-4 w-4" />
                   <span>Roadmap Updated!</span>
                 </div>
                 {msg.updateDetails && (
-                  <div className="text-xs text-green-700 mt-1">
+                  <div className="text-xs text-emerald-700 mt-1">
                     {msg.updateDetails.modificationType?.replace('_', ' ')} applied
                     {msg.updateDetails.newStructure && (
                       <span> • {msg.updateDetails.newStructure.totalModules} modules • {msg.updateDetails.newStructure.estimatedWeeks} weeks</span>
@@ -252,21 +290,23 @@ What would you like to work on today?`,
               </div>
             )}
 
-            {/* Suggestions */}
+            {/* Enhanced Suggestions with amber theme */}
             {msg.suggestions && msg.suggestions.length > 0 && (
               <div className="mt-3 space-y-2">
-                <div className="text-xs text-muted-foreground/80">Suggestions:</div>
-                {msg.suggestions.map((suggestion, i) => (
+                <div className="text-xs text-gray-500 font-medium">Suggestions:</div>
+                <div className="flex flex-wrap gap-2">
+                  {msg.suggestions.map((suggestion, i) => (
                   <Button
                     key={i}
                     variant="outline"
                     size="sm"
-                    className="text-xs h-auto py-1 px-2"
+                    className="text-xs h-auto py-2 px-3 rounded-full border-gray-300 hover:border-blue-400 hover:bg-blue-50 transition-all duration-200"
                     onClick={() => handleSuggestionClick(suggestion)}
                   >
                     {suggestion}
                   </Button>
-                ))}
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -291,16 +331,6 @@ What would you like to work on today?`,
       label: "Study schedule", 
       message: "Help me create a study schedule for this week"
     },
-    // {
-    //   icon: <TrendingUp className="h-4 w-4" />,
-    //   label: "Increase difficulty",
-    //   message: "Make my roadmap more challenging"
-    // },
-    // {
-    //   icon: <Settings className="h-4 w-4" />,
-    //   label: "Modify pace",
-    //   message: "Adjust the pace of my learning plan"
-    // },
     {
       icon: <Zap className="h-4 w-4" />,
       label: "Add modules",
@@ -308,22 +338,13 @@ What would you like to work on today?`,
     }
   ];
 
-  const modificationExamples = [
-    "Make my roadmap more challenging",
-    "Add more JavaScript practice modules", 
-    "Remove beginner HTML topics I already know",
-    "Slow down the pace for better understanding",
-    "Focus more on backend development",
-    "Add more practical projects"
-  ];
-
   return (
-    <div className="md:w-1/2 flex flex-col border-t md:border-t-0 md:border-l h-full bg-background">
-      {/* Header */}
+    <div className="flex flex-col border-t md:border-t-0 md:border-l h-full bg-background">
+      {/* Header*/}
       <div className="border-b p-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-            <Bot className="h-5 w-5 text-muted-foreground" />
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 border border-blue-300 flex items-center justify-center">
+            <Bot className="h-5 w-5 text-blue-600" />
           </div>
           <div>
             <h3 className="font-medium">Learning Assistant</h3>
@@ -337,39 +358,25 @@ What would you like to work on today?`,
       {/* Quick Actions */}
       {chatHistory.length <= 1 && (
         <div className="p-4 border-b">
-          <div className="text-xs text-muted-foreground mb-3">Quick actions:</div>
+          {/* <div className="text-xs text-muted-foreground mb-3">Quick actions:</div> */}
           <div className="grid grid-cols-2 gap-2">
             {quickActions.map((action, idx) => (
-              <Button
-                key={idx}
-                variant="outline"
-                size="sm"
-                className="h-auto p-3 flex flex-col items-center gap-2 text-xs transition-colors hover:bg-muted/50"
-                onClick={() => {
-                  setChatMessage(action.message);
-                }}
-              >
+            <Button
+              key={idx}
+              variant="outline"
+              size="sm"
+              className="h-auto p-3 flex flex-col items-center gap-2 text-xs transition-all duration-200 hover:bg-lumos-primary-light hover:border-lumos-primary hover:shadow-sm transform hover:scale-[1.02] rounded-full"
+              onClick={() => {
+                setChatMessage(action.message);
+              }}
+            >
+              <div className="p-1 rounded-full bg-lumos-primary-light text-lumos-primary-dark">
                 {action.icon}
-                <span>{action.label}</span>
-              </Button>
+              </div>
+              <span className="font-medium">{action.label}</span>
+            </Button>
             ))}
           </div>
-          
-          {/* Modification Examples */}
-          {/* <div className="mt-4">
-            <div className="text-xs text-muted-foreground mb-2">Try these roadmap modifications:</div>
-            <div className="space-y-1">
-              {modificationExamples.slice(0, 3).map((example, idx) => (
-                <button
-                  key={idx}
-                  className="w-full text-left text-xs p-2 bg-muted/30 hover:bg-muted/50 rounded transition-colors"
-                  onClick={() => setChatMessage(example)}
-                >
-                  "{example}"
-                </button>
-              ))}
-            </div>
-          </div> */}
         </div>
       )}
 
@@ -377,22 +384,8 @@ What would you like to work on today?`,
       <div className="flex-1 p-4 overflow-y-auto">
         {chatHistory.map(renderMessage)}
         
-        {/* Loading indicator moved inside assistant bubble */}
-        {isLoading && (
-          <div className="flex justify-start mb-4">
-            <div className="flex items-start gap-3 max-w-[80%]">
-              {/* Keep a static Bot avatar */}
-              <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                <Bot className="h-4 w-4 text-muted-foreground" />
-              </div>
-              {/* Spinner inside a bubble */}
-              <div className="rounded-lg px-4 py-3 bg-muted text-muted-foreground shadow-sm flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span className="text-sm">{isModifying ? 'Modifying your roadmap...' : 'Thinking...'}</span>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Loading indicator */}
+        {isLoading && <TypingIndicator isModifying={isModifying} />}
         
         <div ref={messagesEndRef} />
       </div>
@@ -411,24 +404,26 @@ What would you like to work on today?`,
         </div>
       )}
 
-      {/* Input form */}
-      <form onSubmit={handleSendMessage} className="flex p-4 border-t gap-2">
-        <input
-          className="flex-1 px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-          value={chatMessage}
-          onChange={(e) => setChatMessage(e.target.value)}
-          placeholder={isLoading ? "Please wait..." : "Ask about your learning or modify your roadmap..."}
-          disabled={isLoading}
-        />
+      {/* Input form with amber theme */}
+      <form onSubmit={handleSendMessage} className="flex p-4 border-t bg-gray-50/50 gap-3">
+        <div className="flex-1 relative">
+          <input
+            className="w-full px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:bg-gray-100 transition-all duration-200 shadow-sm"
+            value={chatMessage}
+            onChange={(e) => setChatMessage(e.target.value)}
+            placeholder={isLoading ? "Please wait..." : "Ask about your learning or modify your roadmap..."}
+            disabled={isLoading}
+          />
+        </div>
         <Button 
           type="submit" 
           disabled={isLoading || !chatMessage.trim()}
-          size="sm"
+          className="btn-primary-rounded w-12 h-12 p-0 disabled:bg-gray-300 transition-all duration-200 shadow-sm hover:shadow-md transform hover:scale-105"
         >
           {isLoading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
+            <Loader2 className="h-5 w-5 animate-spin text-black" />
           ) : (
-            <Send className="h-4 w-4" />
+            <Send className="h-5 w-5 text-black" />
           )}
         </Button>
       </form>

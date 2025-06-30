@@ -1,32 +1,44 @@
-// Fixed CommunityPage.jsx - Complete mentor information display
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '@/supabaseClient';
 import Layout from '@/components/common/Layout';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { AlertCircle, MessageCircle, CheckCircle, Clock, Star, Users, MapPin } from 'lucide-react';
+import { 
+  AlertCircle, 
+  MessageCircle, 
+  CheckCircle, 
+  Clock, 
+  Star, 
+  Users, 
+  MapPin,
+  Award,
+  Sparkles,
+  Search,
+  Filter,
+  TrendingUp,
+  Target,
+  Heart
+} from 'lucide-react';
 
 const CommunityPage = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('mentors');
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [experienceFilter, setExperienceFilter] = useState('');
   const [availabilityFilter, setAvailabilityFilter] = useState('');
   
-  // Real data states
+  // data states
   const [mentors, setMentors] = useState([]);
-  const [studyGroups, setStudyGroups] = useState([]);
-  const [accountabilityPosts, setAccountabilityPosts] = useState([]);
+  const [featuredMentors, setFeaturedMentors] = useState([]);
+  const [userGoals, setUserGoals] = useState([]);
   const [connectionRequests, setConnectionRequests] = useState([]);
   const [sentRequests, setSentRequests] = useState([]);
   
@@ -45,6 +57,7 @@ const CommunityPage = () => {
     try {
       setLoading(true);
       await Promise.all([
+        fetchUserGoals(),
         fetchMentors(),
         fetchConnectionRequests(),
         fetchSentRequests()
@@ -53,6 +66,28 @@ const CommunityPage = () => {
       console.error('Error fetching community data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchUserGoals = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('user_goals')
+        .select(`
+          goals (
+            goal_title,
+            goal_description
+          )
+        `)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      
+      const goals = data?.map(item => item.goals?.goal_title).filter(Boolean) || [];
+      setUserGoals(goals);
+    } catch (error) {
+      console.error('Error fetching user goals:', error);
+      setUserGoals(['JavaScript', 'React', 'Node.js']); // Fallback goals
     }
   };
 
@@ -95,8 +130,6 @@ const CommunityPage = () => {
       const mentorsWithSkills = await Promise.all(
         data.map(async (mentor) => {
           try {
-            console.log(`🔍 Fetching skills for ${mentor.username} (ID: ${mentor.id})`);
-            
             const { data: skillsData, error: skillsError } = await supabase
               .from('user_skills')
               .select(`
@@ -108,8 +141,6 @@ const CommunityPage = () => {
               `)
               .eq('user_id', mentor.id);
 
-            console.log(`📊 Skills data for ${mentor.username}:`, { skillsData, skillsError });
-
             if (skillsError) {
               console.error(`❌ Error fetching skills for ${mentor.username}:`, skillsError);
             }
@@ -119,8 +150,6 @@ const CommunityPage = () => {
               category: item.skills?.category,
               level: item.proficiency_level
             })).filter(skill => skill.name) || [];
-
-            console.log(`✅ Processed ${skills.length} skills for ${mentor.username}:`, skills);
 
             return {
               ...mentor,
@@ -144,12 +173,11 @@ const CommunityPage = () => {
         })
       );
       
-      console.log('✅ Mentors with skills loaded:', {
-        total: mentorsWithSkills.length,
-        withSkills: mentorsWithSkills.filter(m => m.skills.length > 0).length,
-        withoutSkills: mentorsWithSkills.filter(m => m.skills.length === 0).length
-      });
       setMentors(mentorsWithSkills);
+      
+      // Find featured mentors based on user goals
+      const featured = findFeaturedMentors(mentorsWithSkills, userGoals);
+      setFeaturedMentors(featured);
       
     } catch (error) {
       console.error('❌ Error in fetchMentors:', error);
@@ -157,9 +185,31 @@ const CommunityPage = () => {
     }
   };
 
+  const findFeaturedMentors = (allMentors, goals) => {
+    if (!goals.length || !allMentors.length) return allMentors.slice(0, 3);
+
+    // Score mentors based on skill match with user goals
+    const scoredMentors = allMentors.map(mentor => {
+      let score = 0;
+      goals.forEach(goal => {
+        mentor.skills.forEach(skill => {
+          if (skill.name.toLowerCase().includes(goal.toLowerCase()) || 
+              goal.toLowerCase().includes(skill.name.toLowerCase())) {
+            score += skill.level || 1; // Higher proficiency = higher score
+          }
+        });
+      });
+      return { ...mentor, matchScore: score };
+    });
+
+    // Sort by score and return top 3
+    return scoredMentors
+      .sort((a, b) => b.matchScore - a.matchScore)
+      .slice(0, 3);
+  };
+
   const fetchConnectionRequests = async () => {
     try {
-      // Fetch incoming requests (for mentors)
       const { data, error } = await supabase
         .from('connection_requests')
         .select(`
@@ -189,7 +239,6 @@ const CommunityPage = () => {
 
   const fetchSentRequests = async () => {
     try {
-      // Fetch sent requests (for mentees)
       const { data, error } = await supabase
         .from('connection_requests')
         .select('to_user_id, status')
@@ -227,7 +276,6 @@ const CommunityPage = () => {
 
       if (error) throw error;
       
-      // Update local state
       setSentRequests(prev => ({
         ...prev,
         [selectedMentor.id]: 'pending'
@@ -235,13 +283,11 @@ const CommunityPage = () => {
       
       setConnectionMessage('');
       setSelectedMentor(null);
-      
-      // Show success message
       alert('Connection request sent successfully!');
       
     } catch (error) {
       console.error('Error sending connection request:', error);
-      if (error.code === '23505') { // Unique constraint violation
+      if (error.code === '23505') {
         alert('You have already sent a request to this mentor.');
       } else {
         alert('Failed to send connection request. Please try again.');
@@ -251,34 +297,9 @@ const CommunityPage = () => {
     }
   };
 
-  const handleConnectionResponse = async (requestId, response) => {
-    try {
-      const { error } = await supabase
-        .from('connection_requests')
-        .update({ 
-          status: response,
-          responded_at: new Date().toISOString()
-        })
-        .eq('request_id', requestId);
-
-      if (error) throw error;
-      
-      // Remove from local state
-      setConnectionRequests(prev => 
-        prev.filter(req => req.request_id !== requestId)
-      );
-      
-      alert(`Connection request ${response}!`);
-    } catch (error) {
-      console.error('Error responding to connection request:', error);
-      alert('Failed to respond to request. Please try again.');
-    }
-  };
-
   const filterMentors = () => {
     let filtered = mentors;
 
-    // Text search
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       filtered = filtered.filter(m =>
@@ -290,7 +311,6 @@ const CommunityPage = () => {
       );
     }
 
-    // Experience filter
     if (experienceFilter && experienceFilter !== 'all') {
       filtered = filtered.filter(m => {
         const years = m.years_experience || 0;
@@ -303,7 +323,6 @@ const CommunityPage = () => {
       });
     }
 
-    // Availability filter  
     if (availabilityFilter && availabilityFilter !== 'all') {
       filtered = filtered.filter(m => {
         if (!m.availability_hours) return false;
@@ -339,13 +358,73 @@ const CommunityPage = () => {
     return mapping[careerStage] || 'Experience varies';
   };
 
-  const getSkillLevelColor = (level) => {
-    switch (level) {
-      case 1: return 'bg-yellow-100 text-yellow-800';
-      case 2: return 'bg-blue-100 text-blue-800';
-      case 3: return 'bg-green-100 text-green-800';
-      default: return 'bg-gray-100 text-gray-800';
+  const getSkillCategoryColor = (category) => {
+    if (!category) return 'bg-gray-100 text-gray-800 border-gray-200';
+    
+    const categoryLower = category.toLowerCase();
+    
+    // Frontend technologies
+    if (categoryLower.includes('frontend') || categoryLower.includes('front-end') || 
+        categoryLower.includes('ui') || categoryLower.includes('ux')) {
+      return 'bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200';
     }
+    
+    // Backend technologies
+    if (categoryLower.includes('backend') || categoryLower.includes('back-end') || 
+        categoryLower.includes('server') || categoryLower.includes('api')) {
+      return 'bg-green-100 text-green-800 border-green-200 hover:bg-green-200';
+    }
+    
+    // Database related
+    if (categoryLower.includes('database') || categoryLower.includes('db') || 
+        categoryLower.includes('sql') || categoryLower.includes('data')) {
+      return 'bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-200';
+    }
+    
+    // DevOps/Infrastructure
+    if (categoryLower.includes('devops') || categoryLower.includes('infrastructure') || 
+        categoryLower.includes('cloud') || categoryLower.includes('deployment')) {
+      return 'bg-orange-100 text-orange-800 border-orange-200 hover:bg-orange-200';
+    }
+    
+    // Mobile development
+    if (categoryLower.includes('mobile') || categoryLower.includes('ios') || 
+        categoryLower.includes('android') || categoryLower.includes('react native')) {
+      return 'bg-pink-100 text-pink-800 border-pink-200 hover:bg-pink-200';
+    }
+    
+    // Machine Learning/AI
+    if (categoryLower.includes('machine learning') || categoryLower.includes('ml') || 
+        categoryLower.includes('ai') || categoryLower.includes('data science')) {
+      return 'bg-indigo-100 text-indigo-800 border-indigo-200 hover:bg-indigo-200';
+    }
+    
+    // Testing/QA
+    if (categoryLower.includes('testing') || categoryLower.includes('qa') || 
+        categoryLower.includes('quality')) {
+      return 'bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200';
+    }
+    
+    // Design
+    if (categoryLower.includes('design') || categoryLower.includes('graphics') || 
+        categoryLower.includes('visual')) {
+      return 'bg-rose-100 text-rose-800 border-rose-200 hover:bg-rose-200';
+    }
+    
+    // Management/Soft Skills
+    if (categoryLower.includes('management') || categoryLower.includes('leadership') || 
+        categoryLower.includes('soft') || categoryLower.includes('communication')) {
+      return 'bg-teal-100 text-teal-800 border-teal-200 hover:bg-teal-200';
+    }
+    
+    // Programming Languages
+    if (categoryLower.includes('programming') || categoryLower.includes('language') || 
+        categoryLower.includes('coding')) {
+      return 'bg-cyan-100 text-cyan-800 border-cyan-200 hover:bg-cyan-200';
+    }
+    
+    // Default for any other categories
+    return 'bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-200';
   };
 
   const getSkillLevelText = (level) => {
@@ -362,7 +441,7 @@ const CommunityPage = () => {
     if (status === 'pending') return { text: 'Request Sent', disabled: true, variant: 'secondary' };
     if (status === 'accepted') return { text: 'Connected', disabled: true, variant: 'default' };
     if (status === 'declined') return { text: 'Request Mentorship', disabled: false, variant: 'outline' };
-    return { text: 'Request Mentorship', disabled: false, variant: 'default' };
+    return { text: 'Connect', disabled: false, variant: 'default' };
   };
 
   const clearFilters = () => {
@@ -371,15 +450,24 @@ const CommunityPage = () => {
     setSearchQuery('');
   };
 
-  const userIsVerifiedMentor = user && mentors.some(m => m.id === user.id);
-
   if (loading) {
     return (
       <Layout>
-        <div className="container mx-auto px-4 py-8">
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-            <span className="ml-3">Loading community...</span>
+        <div className="min-h-screen bg-gradient-to-br from-lumos-primary-light via-white to-blue-50">
+          <div className="container mx-auto px-4 py-8">
+            <div className="animate-fade-in">
+              <div className="text-center mb-12 space-y-4">
+                <div className="h-12 bg-muted/30 rounded-lg w-80 mx-auto animate-pulse"></div>
+                <div className="h-6 bg-muted/20 rounded w-96 mx-auto animate-pulse"></div>
+              </div>
+              
+              <div className="flex justify-center items-center h-32">
+                <div className="flex items-center gap-3">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-lumos-primary"></div>
+                  <span className="text-muted-foreground font-medium">Finding amazing mentors...</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </Layout>
@@ -390,41 +478,119 @@ const CommunityPage = () => {
 
   return (
     <Layout>
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2 text-text">Community</h1>
-          <p className="text-gray-600">Connect with experienced mentors and accelerate your learning journey.</p>
-        </div>
+      <div className="min-h-screen bg-gradient-to-br from-lumos-primary-light via-white to-blue-50">
+        <div className="container mx-auto px-4 py-8">
+          {/* Header */}
+          <div className="text-center mb-12 animate-fade-in">
+            <div className="inline-flex items-center gap-3 bg-white/80 backdrop-blur-sm px-6 py-3 rounded-full border border-lumos-primary/20 mb-6">
+              <Users className="w-5 h-5 text-lumos-primary" />
+              <span className="text-lumos-primary font-semibold">Community Hub</span>
+            </div>
+            <h1 className="text-4xl lg:text-6xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-black mb-4">
+              Connect with Mentors
+            </h1>
+            <p className="text-muted-foreground text-lg lg:text-xl max-w-2xl mx-auto leading-relaxed">
+              Join a thriving community of experienced professionals ready to guide your tech journey
+            </p>
+          </div>
 
-        <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="mb-6">
-          <TabsList>
-            <TabsTrigger value="mentors" className='p-4 flex items-center gap-2'>
-              <Users className="h-4 w-4" />
-              Mentors
-              <Badge variant="secondary" className="ml-1">{mentors.length}</Badge>
-            </TabsTrigger>
-            <TabsTrigger value="studyGroups" className='p-4'>Study Groups</TabsTrigger>
-            <TabsTrigger value="accountability" className='p-4'>Accountability Board</TabsTrigger>
-          </TabsList>
+          {/* Featured Mentors */}
+          {featuredMentors.length > 0 && (
+            <div className="mb-12 animate-slide-up">
+              <Card className="card-minimal-hover overflow-hidden">
+                <CardHeader className="">
+                  <CardTitle className="text-2xl flex items-center gap-3">
+                    <Sparkles className="h-6 w-6 text-purple-600" />
+                    Featured Mentors
+                    <Badge className="bg-purple-100 text-purple-700 border-purple-200">
+                      Matched for You
+                    </Badge>
+                  </CardTitle>
+                  <p className="text-muted-foreground">
+                    Mentors with expertise in your learning goals: {userGoals.slice(0, 3).join(', ')}
+                  </p>
+                </CardHeader>
+                <CardContent className="p-8">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {featuredMentors.map((mentor, index) => {
+                      const buttonState = getRequestButtonState(mentor.id);
+                      
+                      return (
+                        <Card key={mentor.id} className="card-minimal-hover border-2 border-purple-200/50 hover:border-purple-300 transition-all">
+                          <CardContent className="p-6 text-center">
+                            <div className="relative mb-4">
+                              <Avatar className="h-35 w-35 mx-auto ring-4 ring-purple-200">
+                                <AvatarImage 
+                                  src={mentor.profile_picture_url || undefined} 
+                                  alt={mentor.username}
+                                  className="object-cover"
+                                />
+                                <AvatarFallback className="bg-gradient-to-br from-purple-500 to-purple-600 text-white text-xl font-bold">
+                                  {mentor.initials}
+                                </AvatarFallback>
+                              </Avatar>
+                            </div>
+                            
+                            <h3 className="font-bold text-lg mb-1">{mentor.username}</h3>
+                            <p className="text-sm text-muted-foreground mb-3">
+                              {mentor.role} {mentor.company && `at ${mentor.company}`}
+                            </p>
+                            
+                            <div className="flex justify-center mb-4">
+                              <Badge variant="outline" className="text-xs">
+                                {mentor.experience}
+                              </Badge>
+                            </div>
+                            
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button 
+                                  variant={buttonState.variant}
+                                  size="sm"
+                                  disabled={buttonState.disabled}
+                                  onClick={() => setSelectedMentor(mentor)}
+                                  className="w-full btn-primary-rounded"
+                                >
+                                  {buttonState.text}
+                                </Button>
+                              </DialogTrigger>
+                            </Dialog>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
 
-          <TabsContent value="mentors">
-            {/* Search and Filters */}
-            <div className="space-y-4 mb-6">
-              <div className="flex flex-col md:flex-row gap-4">
+          {/* Search and Filters */}
+          <div className="space-y-6 mb-8 animate-slide-up">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                 <Input
                   placeholder="Search mentors by name, skills, company, or expertise..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  className="flex-1"
+                  className="pl-10 h-12 text-base"
                 />
-                <Button variant="outline" onClick={() => setShowFilters(!showFilters)}>
-                  {showFilters ? 'Hide Filters' : 'Show Filters'}
-                </Button>
               </div>
+              <Button 
+                variant="outline" 
+                onClick={() => setShowFilters(!showFilters)}
+                className="btn-outline-rounded px-6 h-12"
+              >
+                <Filter className="h-4 w-4 mr-2" />
+                {showFilters ? 'Hide Filters' : 'Filters'}
+              </Button>
+            </div>
 
-              {showFilters && (
-                <Card className="p-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {showFilters && (
+              <Card className="card-minimal-hover">
+                <CardContent className="p-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div>
                       <label className="block mb-2 text-sm font-medium">Experience Level</label>
                       <Select value={experienceFilter} onValueChange={setExperienceFilter}>
@@ -456,236 +622,253 @@ const CommunityPage = () => {
                     </div>
 
                     <div className="flex items-end">
-                      <Button variant="outline" onClick={clearFilters} className="w-full">
+                      <Button 
+                        variant="outline" 
+                        onClick={clearFilters} 
+                        className="w-full btn-outline-rounded"
+                      >
                         Clear Filters
                       </Button>
                     </div>
                   </div>
-                </Card>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Results summary */}
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
+              <span>
+                Showing {filteredMentors.length} of {mentors.length} mentors
+                {(searchQuery || (experienceFilter && experienceFilter !== 'all') || (availabilityFilter && availabilityFilter !== 'all')) && ' (filtered)'}
+              </span>
+              {filteredMentors.length !== mentors.length && (
+                <Button variant="ghost" size="sm" onClick={clearFilters} className="text-lumos-primary hover:text-lumos-primary-dark">
+                  View all mentors
+                </Button>
               )}
-
-              {/* Results summary */}
-              <div className="flex items-center justify-between text-sm text-gray-600">
-                <span>
-                  Showing {filteredMentors.length} of {mentors.length} mentors
-                  {(searchQuery || (experienceFilter && experienceFilter !== 'all') || (availabilityFilter && availabilityFilter !== 'all')) && ' (filtered)'}
-                </span>
-                {filteredMentors.length !== mentors.length && (
-                  <Button variant="ghost" size="sm" onClick={clearFilters}>
-                    View all mentors
-                  </Button>
-                )}
-              </div>
             </div>
+          </div>
 
-            {/* Mentors Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {filteredMentors.map(mentor => {
-                const buttonState = getRequestButtonState(mentor.id);
-                
-                return (
-                  <Card key={mentor.id} className="hover:shadow-lg transition-shadow border-l-4 border-l-primary/20">
-                    <CardContent className="p-6">
-                      {/* Header */}
-                      <div className="flex items-start gap-4 mb-4">
-                        <Avatar className="w-16 h-16">
+          {/* Mentors Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8 animate-slide-up">
+            {filteredMentors.map(mentor => {
+              const buttonState = getRequestButtonState(mentor.id);
+              
+              return (
+                <Card key={mentor.id} className="card-minimal-hover overflow-hidden border-l-4 border-l-lumos-primary/30 group">
+                  <CardContent className="p-8">
+                    {/* Header */}
+                    <div className="flex items-start gap-6 mb-6">
+                      <div className="relative">
+                        <Avatar className="w-24 h-24 ring-4 ring-white shadow-lg group-hover:ring-lumos-primary/20 transition-all">
                           <AvatarImage 
                             src={mentor.profile_picture_url || undefined} 
                             alt={mentor.username}
                             className="object-cover"
                           />
-                          <AvatarFallback className="bg-gradient-to-br from-primary to-primary/80 text-white text-lg font-semibold">
+                          <AvatarFallback className="bg-gradient-to-br from-lumos-primary to-lumos-primary-dark text-white text-2xl font-bold">
                             {mentor.initials}
                           </AvatarFallback>
                         </Avatar>
-                        
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="text-xl font-semibold">{mentor.username || 'Anonymous Mentor'}</h3>
-                            {mentor.mentor_verified && (
-                              <CheckCircle className="h-5 w-5 text-green-600" />
-                            )}
+                        {mentor.mentor_verified && (
+                          <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center border-2 border-white">
+                            <CheckCircle className="h-4 w-4 text-white" />
                           </div>
-                          
-                          <div className="space-y-1">
-                            <p className="text-gray-700 font-medium">
-                              {mentor.role}
-                              {mentor.company && (
-                                <span className="text-gray-500"> at {mentor.company}</span>
-                              )}
-                            </p>
-                            
-                            <div className="flex items-center gap-4 text-sm text-gray-600">
-                              <span className="flex items-center gap-1">
-                                <Star className="h-3 w-3" />
-                                {mentor.experience}
-                              </span>
-                              {mentor.availability_hours && (
-                                <span className="flex items-center gap-1">
-                                  <Clock className="h-3 w-3" />
-                                  {mentor.availability_hours}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Bio */}
-                      <p className="text-gray-700 text-sm leading-relaxed mb-4 line-clamp-3">
-                        {mentor.bio}
-                      </p>
-
-                      {/* Skills */}
-                      <div className="space-y-2">
-                        <h4 className="text-sm font-medium text-gray-800">Skills & Expertise</h4>
-                        <div className="flex flex-wrap gap-1.5">
-                          {mentor.skills.length > 0 ? (
-                            <>
-                              {mentor.skills.slice(0, 6).map((skill, index) => (
-                                <Badge 
-                                  key={index} 
-                                  variant="secondary" 
-                                  className={`text-xs ${getSkillLevelColor(skill.level)}`}
-                                  title={getSkillLevelText(skill.level)}
-                                >
-                                  {skill.name}
-                                </Badge>
-                              ))}
-                              {mentor.skills.length > 6 && (
-                                <Badge variant="outline" className="text-xs">
-                                  +{mentor.skills.length - 6} more
-                                </Badge>
-                              )}
-                            </>
-                          ) : (
-                            <span className="text-sm text-gray-500 italic">No skills listed</span>
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-
-                    <CardFooter className="px-6 py-4 bg-gray-50/50 flex justify-between items-center">
-                      <div className="text-xs text-gray-500">
-                        Joined {new Date(mentor.created_at).toLocaleDateString()}
+                        )}
                       </div>
                       
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button 
-                            variant={buttonState.variant}
-                            size="sm"
-                            disabled={buttonState.disabled}
-                            onClick={() => setSelectedMentor(mentor)}
-                            className="ml-auto"
-                          >
-                            {buttonState.text}
-                          </Button>
-                        </DialogTrigger>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h3 className="text-2xl font-bold group-hover:text-lumos-primary transition-colors">
+                            {mentor.username || 'Anonymous Mentor'}
+                          </h3>
+                        </div>
                         
-                        <DialogContent className="sm:max-w-md">
-                          <DialogHeader>
-                            <DialogTitle className="flex items-center gap-2">
-                              <Avatar className="w-8 h-8">
-                                <AvatarImage 
-                                  src={mentor?.profile_picture_url || undefined} 
-                                  alt={mentor?.username}
-                                  className="object-cover"
-                                />
-                                <AvatarFallback className="bg-primary text-white text-sm font-semibold">
-                                  {mentor?.initials || '??'}
-                                </AvatarFallback>
-                              </Avatar>
-                              Connect with {mentor?.username}
-                            </DialogTitle>
-                          </DialogHeader>
-                          <div className="space-y-4">
-                            <div className="p-4 bg-blue-50 rounded-lg">
-                              <p className="text-sm text-blue-800">
-                                <strong>{mentor?.username}</strong> • {mentor?.experience} • {mentor?.role}
-                              </p>
-                              <p className="text-xs text-blue-600 mt-1">
-                                {mentor?.availability_hours && `Available: ${mentor.availability_hours}`}
-                              </p>
+                        <div className="space-y-2">
+                          <p className="text-foreground font-semibold text-lg">
+                            {mentor.role}
+                            {mentor.company && (
+                              <span className="text-muted-foreground font-normal"> at {mentor.company}</span>
+                            )}
+                          </p>
+                          
+                          <div className="flex items-center gap-4 text-sm">
+                            <div className="flex items-center gap-2 bg-muted/30 px-3 py-1 rounded-lg">
+                              <Award className="h-4 w-4 text-lumos-primary" />
+                              <span className="font-medium">{mentor.experience}</span>
                             </div>
-                            
-                            <div>
-                              <label className="block text-sm font-medium mb-2">
-                                Introduce yourself and explain what you'd like help with:
-                              </label>
-                              <Textarea
-                                placeholder="Hi! I'm interested in learning more about... I would appreciate your guidance with..."
-                                value={connectionMessage}
-                                onChange={(e) => setConnectionMessage(e.target.value)}
-                                className="min-h-[120px]"
-                                maxLength={500}
-                              />
-                              <div className="text-xs text-gray-500 text-right mt-1">
-                                {connectionMessage.length}/500 characters
+                            {mentor.availability_hours && (
+                              <div className="flex items-center gap-2 bg-muted/30 px-3 py-1 rounded-lg">
+                                <Clock className="h-4 w-4 text-green-600" />
+                                <span className="font-medium">{mentor.availability_hours}</span>
                               </div>
-                            </div>
-                            
-                            <div className="flex justify-end gap-2">
-                              <Button 
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Bio */}
+                    <div className="mb-6">
+                      <p className="text-muted-foreground leading-relaxed line-clamp-3">
+                        {mentor.bio}
+                      </p>
+                    </div>
+
+                    {/* Skills */}
+                    <div className="space-y-3">
+                      <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
+                        <Target className="h-4 w-4 text-lumos-primary" />
+                        Skills & Expertise
+                      </h4>
+                      <div className="flex flex-wrap gap-2">
+                        {mentor.skills.length > 0 ? (
+                          <>
+                            {mentor.skills.slice(0, 8).map((skill, index) => (
+                              <Badge 
+                                key={index} 
                                 variant="outline" 
-                                onClick={() => setSelectedMentor(null)}
+                                className={`${getSkillCategoryColor(skill.category)} font-medium hover:scale-105 transition-transform`}
+                                title={`${skill.category || 'General'} • ${getSkillLevelText(skill.level)}`}
                               >
-                                Cancel
-                              </Button>
-                              <Button 
-                                onClick={sendConnectionRequest}
-                                disabled={sendingRequest || !connectionMessage.trim()}
-                              >
-                                {sendingRequest ? 'Sending...' : 'Send Request'}
-                              </Button>
+                                {skill.name}
+                              </Badge>
+                            ))}
+                            {mentor.skills.length > 8 && (
+                              <Badge variant="outline" className="text-lumos-primary border-lumos-primary">
+                                +{mentor.skills.length - 8} more
+                              </Badge>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-sm text-muted-foreground italic">No skills listed</span>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+
+                  <CardFooter className="px-8 py-6 bg-gradient-to-r from-muted/10 to-muted/5 flex justify-between items-center">
+                    <div className="text-xs text-muted-foreground">
+                      Joined {new Date(mentor.created_at).toLocaleDateString()}
+                    </div>
+                    
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button 
+                          variant={buttonState.variant}
+                          disabled={buttonState.disabled}
+                          onClick={() => setSelectedMentor(mentor)}
+                          className="btn-primary-rounded px-6 py-2 font-semibold hover-lift"
+                        >
+                          <MessageCircle className="h-4 w-4 mr-2" />
+                          {buttonState.text}
+                        </Button>
+                      </DialogTrigger>
+                      
+                      <DialogContent className="sm:max-w-lg">
+                        <DialogHeader>
+                          <DialogTitle className="flex items-center gap-3 text-xl">
+                            <Avatar className="w-10 h-10">
+                              <AvatarImage 
+                                src={mentor?.profile_picture_url || undefined} 
+                                alt={mentor?.username}
+                                className="object-cover"
+                              />
+                              <AvatarFallback className="bg-lumos-primary text-white font-bold">
+                                {mentor?.initials || '??'}
+                              </AvatarFallback>
+                            </Avatar>
+                            Connect with {mentor?.username}
+                          </DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-6">
+                          <div className="p-4 bg-gradient-to-r from-lumos-primary-light to-blue-50 rounded-xl">
+                            <p className="font-semibold text-lumos-primary-dark">
+                              {mentor?.username} • {mentor?.experience} • {mentor?.role}
+                            </p>
+                            <p className="text-sm text-lumos-primary-dark/70 mt-1">
+                              {mentor?.availability_hours && `Available: ${mentor.availability_hours}`}
+                            </p>
+                          </div>
+                          
+                          <div>
+                            <label className="block text-sm font-medium mb-3">
+                              Introduce yourself and explain what you'd like help with:
+                            </label>
+                            <Textarea
+                              placeholder="Hi! I'm interested in learning more about... I would appreciate your guidance with..."
+                              value={connectionMessage}
+                              onChange={(e) => setConnectionMessage(e.target.value)}
+                              className="min-h-[120px] resize-none"
+                              maxLength={500}
+                            />
+                            <div className="text-xs text-muted-foreground text-right mt-2">
+                              {connectionMessage.length}/500 characters
                             </div>
                           </div>
-                        </DialogContent>
-                      </Dialog>
-                    </CardFooter>
-                  </Card>
-                );
-              })}
-            </div>
+                          
+                          <div className="flex justify-end gap-3">
+                            <Button 
+                              variant="outline" 
+                              onClick={() => setSelectedMentor(null)}
+                              className="btn-outline-rounded px-6"
+                            >
+                              Cancel
+                            </Button>
+                            <Button 
+                              onClick={sendConnectionRequest}
+                              disabled={sendingRequest || !connectionMessage.trim()}
+                              className="btn-primary-rounded px-6"
+                            >
+                              {sendingRequest ? (
+                                <>
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                  Sending...
+                                </>
+                              ) : (
+                                <>
+                                  <Heart className="h-4 w-4 mr-2" />
+                                  Send Request
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  </CardFooter>
+                </Card>
+              );
+            })}
+          </div>
 
-            {/* Empty state */}
-            {filteredMentors.length === 0 && (
-              <Card className="p-12 text-center">
-                <AlertCircle className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-xl font-medium mb-2">No mentors found</h3>
-                <p className="text-gray-600 mb-4">
+          {/* Empty State */}
+          {filteredMentors.length === 0 && (
+            <Card className="card-minimal-hover text-center py-16">
+              <CardContent>
+                <div className="w-20 h-20 bg-gradient-to-br from-muted to-muted/50 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Users className="h-10 w-10 text-muted-foreground" />
+                </div>
+                <h3 className="text-2xl font-bold mb-3">No mentors found</h3>
+                <p className="text-muted-foreground mb-6 max-w-md mx-auto leading-relaxed">
                   {searchQuery || (experienceFilter && experienceFilter !== 'all') || (availabilityFilter && availabilityFilter !== 'all')
-                    ? 'Try adjusting your search criteria or filters.' 
-                    : 'Verified mentors will appear here.'
+                    ? 'Try adjusting your search criteria or filters to find the perfect mentor for you.' 
+                    : 'Our amazing mentors will appear here once they\'ve been verified.'
                   }
                 </p>
                 {(searchQuery || (experienceFilter && experienceFilter !== 'all') || (availabilityFilter && availabilityFilter !== 'all')) && (
-                  <Button variant="outline" onClick={clearFilters}>
+                  <Button 
+                    variant="outline" 
+                    onClick={clearFilters}
+                    className="btn-outline-rounded px-8"
+                  >
                     Clear all filters
                   </Button>
                 )}
-              </Card>
-            )}
-          </TabsContent>
-
-          {/* Study Groups Tab (placeholder) */}
-          <TabsContent value="studyGroups">
-            <Card className="p-12 text-center">
-              <Users className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xl font-medium mb-2">Study Groups</h3>
-              <p className="text-gray-600">Collaborative learning groups feature coming soon!</p>
+              </CardContent>
             </Card>
-          </TabsContent>
-
-          {/* Accountability Board Tab (placeholder) */}
-          <TabsContent value="accountability">
-            <Card className="p-12 text-center">
-              <CheckCircle className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xl font-medium mb-2">Accountability Board</h3>
-              <p className="text-gray-600">Track goals and progress with your peers - coming soon!</p>
-            </Card>
-          </TabsContent>
-        </Tabs>
+          )}
+        </div>
       </div>
     </Layout>
   );
