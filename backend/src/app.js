@@ -1,71 +1,78 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-// Verify critical environment variables are present
-const requiredEnvVars = ['OPENAI_API_KEY', 'SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'];
-const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
-
-if (missingVars.length > 0) {
-  console.error('❌ Missing required environment variables:', missingVars.join(', '));
-  console.error('Please create a .env file with the required variables.');
+// check env variables
+if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY || !process.env.OPENAI_API_KEY) {
+  console.error('❌ Missing required environment variables');
   process.exit(1);
 }
-
 console.log('✅ Environment variables loaded successfully');
 
 import express from 'express';
 import cors from 'cors';
+import rateLimit from 'express-rate-limit'
+
+// routes
 import roadmapRoutes from './routes/roadmapRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import templateRoutes from './routes/templateRoutes.js';
-import learningPathTemplateService from './services/learningPathTemplateService.js';
+
+// services
 import ragOrchestrator from './services/ai/ragOrchestrator.js';
+
+// error handling
+import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 
 const PORT = process.env.PORT || 5001;
 const app = express();
 
-app.use(cors({
-  origin: 'http://localhost:3000',
-  credentials: true
-}));
-app.use(express.json());
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: {
+    success: false,
+    error: 'Too many requests, please try again later'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
+app.use(limiter)
+
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production' 
+    ? ['https://yourapp.com'] // production domain to be replaced
+    : ['http://localhost:3000'],
+  credentials: true,
+  optionsSuccessStatus: 200
+}));
+
+app.use(express.json({ 
+  limit: '1mb',
+  strict: true
+}));
+
+app.use(express.urlencoded({ 
+  extended: true, 
+  limit: '1mb' 
+}));
+
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.path} - IP: ${req.ip}`);
+  next();
+});
 
 app.use('/api/roadmap', roadmapRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/templates', templateRoutes);
 
-app.get('/api/templates/popular', async (req, res) => {
-  try {
-    const templates = await learningPathTemplateService.getPopularTemplates(10);
-    res.json({ success: true, templates });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-app.get('/api/templates/stats', async (req, res) => {
-  try {
-    const stats = await ragOrchestrator.getRoadmapGenerationStats();
-    res.json({ success: true, stats });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-app.post('/api/templates/seed', async (req, res) => {
-  try {
-    await learningPathTemplateService.seedInitialTemplates();
-    res.json({ success: true, message: 'Templates seeded successfully' });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
+app.use(notFoundHandler);  // Handle 404s
+app.use(errorHandler);     // Handle all other errors
 
 app.get('/', (req, res) => {
-  res.send('Lumos backend with intelligent roadmap templates');
+  res.send('Lumos backend');
 });
 
 async function initializeServer() {

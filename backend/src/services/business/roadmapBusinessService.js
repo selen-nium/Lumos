@@ -1,14 +1,11 @@
-import { userRepository, roadmapRepository, contentRepository } from '../../repositories/index.js';
+// import { roadmapRepository, contentRepository } from '../../repositories/index.js';
+import userDataService from '../data/userDataService.js'
+import roadmapDataService from '../data/roadmapDataService.js';
+import contentDataService from '../data/contentDataService.js';
 import { User } from '../../models/index.js';
 import ragOrchestrator from '../ai/ragOrchestrator.js';
 
 class RoadmapBusinessService {
-  constructor() {
-    this.userRepo = userRepository;
-    this.roadmapRepo = roadmapRepository;
-    this.contentRepo = contentRepository;
-  }
-
   /**
    * Generate new roadmap for user (onboarding flow)
    */
@@ -17,7 +14,7 @@ class RoadmapBusinessService {
       console.log('🗺️ Generating roadmap for user:', userId);
 
       // Validate user exists
-      const userExists = await this.userRepo.exists({ id: userId });
+      const userExists = await userDataService.exists({ id: userId });
       if (!userExists) {
         throw new Error('User not found');
       }
@@ -30,7 +27,6 @@ class RoadmapBusinessService {
       // Generate roadmap using RAG orchestrator
       const { roadmap: roadmapData } = await ragOrchestrator.generateInitialRoadmap(userId, profileData);
       
-      // ENHANCED DEBUGGING AND PROCESSING:
       console.log('🔍 Generated roadmap data FULL:', JSON.stringify(roadmapData, null, 2));
       
       // Extract modules properly
@@ -61,13 +57,13 @@ class RoadmapBusinessService {
         modulesCount: processedRoadmap.modules?.length || 0
       });
 
-      // Save roadmap using new normalized approach
-      await this.roadmapRepo.createLearningPath(userId, processedRoadmap);
+      // Save roadmap 
+      await roadmapDataService.createLearningPath(userId, processedRoadmap);
 
       console.log('✅ Roadmap generated and saved successfully');
       
       // Get stats for response
-      const stats = await this.roadmapRepo.getRoadmapStats(userId);
+      const stats = await roadmapDataService.getRoadmapStats(userId);
       
       return {
         success: true,
@@ -93,7 +89,7 @@ class RoadmapBusinessService {
     try {
       console.log('📚 Getting roadmap for user:', userId);
 
-      const roadmapData = await this.roadmapRepo.findActiveByUserId(userId);
+      const roadmapData = await roadmapDataService.findActiveByUserId(userId);
       
       if (!roadmapData) {
         return {
@@ -127,10 +123,10 @@ class RoadmapBusinessService {
     try {
       console.log('📝 Updating module completion:', { moduleId, userId, isCompleted });
 
-      const result = await this.roadmapRepo.updateModuleCompletion(userId, moduleId, isCompleted);
+      const result = await roadmapDataService.updateModuleCompletion(userId, moduleId, isCompleted);
       
       // Get updated stats
-      const stats = await this.roadmapRepo.getRoadmapStats(userId);
+      const stats = await roadmapDataService.getRoadmapStats(userId);
       
       return {
         success: true,
@@ -153,14 +149,14 @@ class RoadmapBusinessService {
    */
   async getUserProgress(userId) {
     try {
-      const stats = await this.roadmapRepo.getRoadmapStats(userId);
+      const stats = await roadmapDataService.getRoadmapStats(userId);
       
       if (!stats.hasRoadmap) {
         return { hasRoadmap: false };
       }
 
       // Get user for additional context
-      const userData = await this.userRepo.getProfile(userId);
+      const userData = await userDataService.getProfile(userId);
       const user = new User(userData);
 
       return {
@@ -195,8 +191,8 @@ class RoadmapBusinessService {
    */
   async getRecommendations(userId, type = 'next_steps') {
     try {
-      const roadmapData = await this.roadmapRepo.findActiveByUserId(userId);
-      const userData = await this.userRepo.getProfile(userId);
+      const roadmapData = await roadmapDataService.findActiveByUserId(userId);
+      const userData = await userDataService.getProfile(userId);
 
       if (!roadmapData) {
         return {
@@ -231,11 +227,11 @@ class RoadmapBusinessService {
     const operations = [];
 
     if (profileData.skills?.length > 0) {
-      operations.push(() => this.userRepo.updateUserSkills(userId, profileData.skills));
+      operations.push(() => userDataService.updateUserSkills(userId, profileData.skills));
     }
 
     if (profileData.goals?.length > 0) {
-      operations.push(() => this.userRepo.updateUserGoals(userId, profileData.goals));
+      operations.push(() => userDataService.updateUserGoals(userId, profileData.goals));
     }
 
     // Update main profile fields
@@ -247,7 +243,7 @@ class RoadmapBusinessService {
     });
 
     if (Object.keys(profileUpdates).length > 0) {
-      operations.push(() => this.userRepo.updateProfile(userId, profileUpdates));
+      operations.push(() => userDataService.updateProfile(userId, profileUpdates));
     }
 
     // Execute all updates
@@ -380,9 +376,9 @@ class RoadmapBusinessService {
   async healthCheck() {
     try {
       const [userHealth, roadmapHealth, contentHealth] = await Promise.all([
-        this.userRepo.healthCheck().catch(() => ({ status: 'unhealthy' })),
-        this.roadmapRepo.healthCheck().catch(() => ({ status: 'unhealthy' })),
-        this.contentRepo.healthCheck().catch(() => ({ status: 'unhealthy' }))
+        userDataService.healthCheck().catch(() => ({ status: 'unhealthy' })),
+        roadmapDataService.healthCheck().catch(() => ({ status: 'unhealthy' })),
+        contentDataService.healthCheck().catch(() => ({ status: 'unhealthy' }))
       ]);
 
       const isHealthy = [userHealth, roadmapHealth, contentHealth]

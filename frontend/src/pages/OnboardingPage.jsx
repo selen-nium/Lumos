@@ -12,9 +12,6 @@ import Step2Career from '../components/onboarding/Step2Career';
 import Step3Skills from '../components/onboarding/Step3Skills';
 import Step4Goals from '../components/onboarding/Step4Goals';
 import Step5Review from '../components/onboarding/Step5Review';
-import LetterGlitch from '@/components/common/LetterGlitch';
-import Lottie from 'react-lottie-player';
-import bgAnimation from '../assets/animation/shapeBg'
 
 const OnboardingPage = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -309,52 +306,6 @@ const OnboardingPage = () => {
       );
       default: return null;
     }
-  };
-
-  const getStepTitle = () => {
-    const effectiveStep = getEffectiveStep();
-    const titles = {
-      1: "Personal Information",
-      2: "Career & Experience", 
-      3: "Current Skills",
-      4: "Learning Goals",
-      5: "Review & Confirm"
-    };
-    return titles[effectiveStep] || "Getting Started";
-  };
-
-  const getStepDescription = () => {
-    const effectiveStep = getEffectiveStep();
-    const descriptions = {
-      1: "Tell us about yourself to get started",
-      2: "Share your career background and aspirations", 
-      3: "Select your current technical skills",
-      4: "Choose what you'd like to learn and achieve",
-      5: "Review your information before we create your roadmap"
-    };
-    return descriptions[effectiveStep] || "Let's get you set up";
-  };
-
-  const getWelcomeMessage = () => {
-    const messages = {
-      1: "Welcome to Lumos!",
-      2: "Tell us about your career",
-      3: "What are your skills?", 
-      4: "What do you want to learn?",
-      5: "You're almost ready!"
-    };
-    return messages[currentStep] || "Welcome to Lumos!";
-  };
-
-  const getWelcomeSubtext = () => {
-    const subtexts = {
-      1: "Let's create your personalized learning journey together. We'll start by getting to know you better.",
-      2: "Help us understand your background so we can tailor the perfect learning experience for you.",
-      3: "Select the technologies and skills you're already comfortable with. This helps us create the right starting point.",
-      4: "Choose your learning objectives and goals. We'll build a roadmap to help you achieve them.",
-      5: "Review your information and we'll generate your personalized learning roadmap in just a moment!"
-    };
-    return subtexts[currentStep] || "Let's get started on your learning journey.";
   };
 
   return (

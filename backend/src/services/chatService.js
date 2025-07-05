@@ -2,7 +2,8 @@ import ragOrchestrator from './ai/ragOrchestrator.js';
 import llmService from './core/llmService.js';
 import supabaseService from './core/supabaseService.js';
 import userProfileService from './userProfileService.js';
-import { roadmapRepository } from '../repositories/index.js';
+// import { roadmapDataService } from '../repositories/index.js';
+import roadmapDataService from './data/roadmapDataService.js';
 
 class ChatService {
     /**
@@ -49,7 +50,7 @@ class ChatService {
             });
 
             // Get current roadmap data
-            const currentRoadmap = await roadmapRepository.findActiveByUserId(userId);
+            const currentRoadmap = await roadmapDataService.findActiveByUserId(userId);
             if (!currentRoadmap) {
                 return {
                     response: "I couldn't find your current learning roadmap. Please make sure you have completed the onboarding process first.",
@@ -60,7 +61,7 @@ class ChatService {
             }
 
             // Create backup before modification
-            const backupId = await roadmapRepository.backupCurrentRoadmap(userId);
+            const backupId = await roadmapDataService.backupCurrentRoadmap(userId);
             if (backupId) {
                 console.log("💾 Backup created with ID:", backupId);
             }
@@ -104,7 +105,7 @@ class ChatService {
                 try {
                     console.log("💾 Saving modified roadmap to database...");
                     
-                    const saveResult = await roadmapRepository.updateUserRoadmap(
+                    const saveResult = await roadmapDataService.updateUserRoadmap(
                         userId, 
                         modificationResponse.modifiedRoadmap
                     );
@@ -120,7 +121,7 @@ class ChatService {
                     // Try to restore from backup if save failed
                     if (backupId) {
                         try {
-                            await roadmapRepository.restoreFromBackup(userId, backupId);
+                            await roadmapDataService.restoreFromBackup(userId, backupId);
                             console.log("🔄 Restored from backup due to save failure");
                         } catch (restoreError) {
                             console.error("❌ Failed to restore from backup:", restoreError);
@@ -370,7 +371,7 @@ class ChatService {
     async getModificationHistory(userId) {
         try {
             console.log("📜 Getting roadmap modification history for user:", userId);
-            return await roadmapRepository.getModificationHistory(userId);
+            return await roadmapDataService.getModificationHistory(userId);
         } catch (error) {
             console.error('Error getting modification history:', error);
             return { history: [], lastModified: null, created: null };
@@ -496,7 +497,7 @@ class ChatService {
             console.log("👁️ Generating roadmap modification preview:", { userId, editType });
 
             // Get current roadmap data
-            const currentRoadmap = await roadmapRepository.findActiveByUserId(userId);
+            const currentRoadmap = await roadmapDataService.findActiveByUserId(userId);
             if (!currentRoadmap) {
                 throw new Error("No active roadmap found");
             }
@@ -590,7 +591,7 @@ class ChatService {
                 dependencies: {
                     ragOrchestrator: ragHealth,
                     supabaseService: supabaseHealth,
-                    roadmapRepository: 'available'
+                    roadmapDataService: 'available'
                 },
                 capabilities: {
                     chatProcessing: ragHealth.capabilities?.chatGeneration || false,

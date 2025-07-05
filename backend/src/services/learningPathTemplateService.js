@@ -4,7 +4,7 @@ import supabaseService from './core/supabaseService.js';
 class LearningPathTemplateService {
   constructor() {
     this.db = supabaseService;
-    this.similarityThreshold = 0.78; // Adjust base on testing
+    this.similarityThreshold = 0.7; // Adjust base on testing
   }
 
   /**
@@ -111,7 +111,6 @@ class LearningPathTemplateService {
       return template;
     } catch (error) {
       console.error('❌ Error saving template:', error);
-      // Don't throw - this shouldn't block roadmap generation
       return null;
     }
   }
@@ -293,7 +292,6 @@ class LearningPathTemplateService {
       const hasSkillOverlap = moduleSkills.some(skill => userSkills.includes(skill));
       
       if (hasSkillOverlap && userContext.experienceLevel !== 'beginner') {
-        // Mark as optional or adjust difficulty
         return {
           ...module,
           difficulty: 'beginner', // Make it easier since they have some knowledge

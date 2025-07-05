@@ -1,10 +1,11 @@
-import dataService from './data/dataService.js';
+// import dataService from './data/dataService.js';
+import userDataService from './data/userDataService.js';
 import { User } from '../models/index.js';
 
 class UserProfileService {
-    constructor() {
-        this.dataService = dataService;
-    }
+    // constructor() {
+    //     userDataService = dataService;
+    // }
 
     /**
      * Get user profile from database
@@ -13,7 +14,7 @@ class UserProfileService {
         try {
             console.log('👤 Getting user profile via data service:', userId);
             
-            const profile = await this.dataService.getProfile(userId);
+            const profile = await userDataService.getProfile(userId);
             
             if (!profile) {
                 throw new Error('User profile not found');
@@ -33,7 +34,7 @@ class UserProfileService {
         try {
             console.log('🛠️ Getting user skills via data service:', userId);
             
-            return await this.dataService.getUserSkills(userId);
+            return await userDataService.getUserSkills(userId);
         } catch (error) {
             console.error('Error fetching user skills:', error);
             throw error;
@@ -47,7 +48,7 @@ class UserProfileService {
         try {
             console.log('🎯 Getting user goals via data service:', userId);
             
-            return await this.dataService.getUserGoals(userId);
+            return await userDataService.getUserGoals(userId);
         } catch (error) {
             console.error('Error fetching user goals:', error);
             throw error;
@@ -61,7 +62,7 @@ class UserProfileService {
         try {
             console.log('🗺️ Getting current learning path via data service:', userId);
             
-            return await this.dataService.findActiveByUserId(userId);
+            return await userDataService.findActiveByUserId(userId);
         } catch (error) {
             console.error('Error fetching current learning path:', error);
             throw error;
@@ -77,10 +78,10 @@ class UserProfileService {
             
             // Fetch all user data in parallel using data service
             const [profile, skills, goals, currentPath] = await Promise.all([
-                this.dataService.getProfile(userId),
-                this.dataService.getUserSkills(userId),
-                this.dataService.getUserGoals(userId),
-                this.dataService.findActiveByUserId(userId)
+                userDataService.getProfile(userId),
+                userDataService.getUserSkills(userId),
+                userDataService.getUserGoals(userId),
+                userDataService.findActiveByUserId(userId)
             ]);
 
             if (!profile) {
@@ -148,7 +149,7 @@ class UserProfileService {
                 throw new Error(`Validation failed: ${user.getErrors().map(e => e.message).join(', ')}`);
             }
             
-            const saved = await this.dataService.updateProfile(userId, user.toDatabase());
+            const saved = await userDataServic.updateProfile(userId, user.toDatabase());
             return new User(saved);
         } catch (error) {
             console.error('Error updating user profile:', error);
@@ -163,7 +164,7 @@ class UserProfileService {
         try {
             console.log('💼 Updating user skills via data service:', userId);
             
-            return await this.dataService.updateUserSkills(userId, skillIds);
+            return await userDataServic.updateUserSkills(userId, skillIds);
         } catch (error) {
             console.error('Error updating user skills:', error);
             throw error;
@@ -177,7 +178,7 @@ class UserProfileService {
         try {
             console.log('🎯 Updating user goals via data service:', userId);
             
-            return await this.dataService.updateUserGoals(userId, goalIds);
+            return await userDataServic.updateUserGoals(userId, goalIds);
         } catch (error) {
             console.error('Error updating user goals:', error);
             throw error;
@@ -196,7 +197,7 @@ class UserProfileService {
             // Update profile with onboarding data
             if (onboardingData.profileUpdates) {
                 operations.push(async () => {
-                    return await this.dataService.updateProfile(userId, {
+                    return await userDataService.updateProfile(userId, {
                         ...onboardingData.profileUpdates,
                         onboarding_complete: true
                     });
@@ -206,14 +207,14 @@ class UserProfileService {
             // Update skills
             if (onboardingData.skills && onboardingData.skills.length > 0) {
                 operations.push(async () => {
-                    return await this.dataService.updateUserSkills(userId, onboardingData.skills);
+                    return await userDataService.updateUserSkills(userId, onboardingData.skills);
                 });
             }
 
             // Update goals
             if (onboardingData.goals && onboardingData.goals.length > 0) {
                 operations.push(async () => {
-                    return await this.dataService.updateUserGoals(userId, onboardingData.goals);
+                    return await userDataService.updateUserGoals(userId, onboardingData.goals);
                 });
             }
 
@@ -245,12 +246,12 @@ class UserProfileService {
             console.log('📊 Getting user statistics via data service:', userId);
             
             // Get roadmap stats
-            const roadmapStats = await this.dataService.getRoadmapStats(userId);
+            const roadmapStats = await userDataService.getRoadmapStats(userId);
             
             // Get basic user data
-            const profile = await this.dataService.getProfile(userId);
-            const skills = await this.dataService.getUserSkills(userId);
-            const goals = await this.dataService.getUserGoals(userId);
+            const profile = await userDataService.getProfile(userId);
+            const skills = await userDataService.getUserSkills(userId);
+            const goals = await userDataService.getUserGoals(userId);
 
             return {
                 completedModules: roadmapStats.completedModules || 0,
@@ -274,7 +275,7 @@ class UserProfileService {
         try {
             console.log('⚙️ Getting learning preferences:', userId);
             
-            const profile = await this.dataService.getProfile(userId);
+            const profile = await userDataService.getProfile(userId);
             
             if (!profile) return null;
             
@@ -299,8 +300,8 @@ class UserProfileService {
             console.log('📋 Getting available skills and goals');
             
             const [skills, goals] = await Promise.all([
-                this.dataService.getAllSkills(),
-                this.dataService.getAllGoals()
+                userDataService.getAllSkills(),
+                userDataService.getAllGoals()
             ]);
             
             return { skills, goals };
@@ -318,8 +319,8 @@ class UserProfileService {
             console.log('💡 Getting content recommendations:', { userId, type, limit });
             
             // Simplified recommendations based on user's skills and goals
-            const skills = await this.dataService.getUserSkills(userId);
-            const goals = await this.dataService.getUserGoals(userId);
+            const skills = await userDataService.getUserSkills(userId);
+            const goals = await userDataService.getUserGoals(userId);
             
             return {
                 recommendations: {
@@ -338,7 +339,7 @@ class UserProfileService {
      */
     async validateUser(userId) {
         try {
-            const profile = await this.dataService.getProfile(userId);
+            const profile = await userDataService.getProfile(userId);
             
             if (!profile) {
                 return { exists: false, hasCompletedOnboarding: false };
@@ -412,7 +413,7 @@ class UserProfileService {
      */
     async healthCheck() {
         try {
-            const dataHealth = await this.dataService.healthCheck();
+            const dataHealth = await userDataService.healthCheck();
             
             return {
                 status: dataHealth.status === 'healthy' ? 'healthy' : 'degraded',

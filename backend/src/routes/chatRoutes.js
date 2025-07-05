@@ -1,41 +1,43 @@
 import express from 'express';
+import { asyncHandler, createError } from '../middleware/errorHandler.js';
+import { responseFormatter } from '../middleware/responseFormatter.js';
 import chatService from '../services/chatService.js';
 
 const router = express.Router();
+router.use(responseFormatter);
 
-// Main chat message endpoint
-router.post('/message', async (req, res) => {
+const basicValidation = (req, res, next) => {
+  if (!req.body?.context?.user?.id) {
+    return res.apiError('User context required', 400);
+  }
+  req.userId = req.body.context.user.id;
+  next();
+};
+
+// Main chat endpoint
+router.post('/message', basicValidation, asyncHandler(async (req, res) => {
+  const { message, context, chatHistory } = req.body;
+  
+  // Validate input
+  if (!message?.trim()) {
+    return res.apiError('Message cannot be empty', 400);
+  }
+
+  if (message.length > 2000) {
+    return res.apiError('Message too long. Please keep it under 2000 characters.', 400);
+  }
+
+  console.log(`💬 Processing chat message for user: ${req.userId}`);
+
   try {
-    const { message, context, chatHistory } = req.body;
-    
-    if (!message?.trim()) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Message is required' 
-      });
-    }
-
-    if (!context?.user?.id) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'User context is required' 
-      });
-    }
-
-    console.log("💬 Processing chat message for user:", context.user.id);
-    console.log("📝 Message:", message);
-
-    // Detect if this is a roadmap modification request
-    const roadmapEditType = detectRoadmapEditRequest(message);
-    
-    console.log("🔍 Modification detection result:", roadmapEditType);
+    const roadmapEditType = detectRoadmapEditRequest(message); //detect roadmap modif request
     
     if (roadmapEditType) {
       console.log("🔧 Detected roadmap modification request:", roadmapEditType);
       
       try {
         const editResponse = await chatService.processRoadmapModification(
-          context.user.id,
+          req.userId,
           message,
           roadmapEditType,
           {
@@ -45,27 +47,26 @@ router.post('/message', async (req, res) => {
           }
         );
 
-        return res.json({
-          success: true,
+        return res.apiSuccess({
           response: editResponse.response,
           roadmapUpdated: editResponse.roadmapUpdated,
           updateDetails: editResponse.updateDetails,
           suggestions: generateRoadmapEditSuggestions(roadmapEditType, context.roadmap?.completedPercentage || 0)
-        });
+        }, 'Roadmap updated successfully');
+
       } catch (modificationError) {
         console.error("❌ Roadmap modification error:", modificationError);
-        
-        // Fallback to regular chat if modification fails
+        // fall back to regular chat
         console.log("🔄 Falling back to regular chat processing...");
       }
     }
 
+    // Regular chat 
     console.log("💬 Processing as regular chat message");
-
-    // Regular chat processing
+    
     const responseType = detectResponseType(message);
     const chatResponse = await chatService.processUserMessage(
-      context.user.id, 
+      req.userId, 
       message, 
       {
         responseType,
@@ -79,77 +80,60 @@ router.post('/message', async (req, res) => {
 
     const suggestions = await generateSuggestions(message, context);
 
-    res.json({
-      success: true,
+    res.apiSuccess({
       response: chatResponse.response,
       suggestions: suggestions,
       context: {
         messageProcessed: chatResponse.message,
         timestamp: chatResponse.timestamp
       }
-    });
+    }, 'Message processed successfully');
 
   } catch (error) {
-    console.error('❌ Chat message error:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message || 'Failed to process message'
-    });
-  }
-});
-
-
-// Dedicated roadmap editing endpoint
-router.post('/edit-roadmap', async (req, res) => {
-  try {
-    const { userId, editRequest, editType, currentRoadmap } = req.body;
-    
-    if (!userId || !editRequest) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'User ID and edit request are required' 
-      });
+    if (error.message?.includes('OpenAI')) {
+      throw new Error('AI service temporarily unavailable. Please try again in a moment.');
+    } else if (error.message?.includes('timeout')) {
+      throw new Error('Request timed out. Please try a shorter message.');
+    } else {
+      throw new Error('Failed to process your message. Please try again.');
     }
-
-    console.log("🔧 Processing roadmap edit request:", {
-      userId,
-      editType,
-      editRequest: editRequest.substring(0, 100) + '...'
-    });
-
-    // Determine edit type if not provided
-    const detectedEditType = editType || detectRoadmapEditRequest(editRequest);
-    
-    if (!detectedEditType) {
-      return res.status(400).json({
-        success: false,
-        error: 'Could not determine modification type from request'
-      });
-    }
-
-    const editResponse = await chatService.processRoadmapModification(
-      userId,
-      editRequest,
-      detectedEditType,
-      { currentRoadmap }
-    );
-
-    res.json({
-      success: true,
-      response: editResponse.response,
-      roadmapUpdated: editResponse.roadmapUpdated,
-      updateDetails: editResponse.updateDetails,
-      timestamp: new Date().toISOString()
-    });
-
-  } catch (error) {
-    console.error('❌ Roadmap edit error:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message || 'Failed to process roadmap edit'
-    });
   }
-});
+}));
+
+// roadmap editing endpoint
+router.post('/edit-roadmap', basicValidation, asyncHandler(async (req, res) => {
+  const { editRequest, editType, currentRoadmap } = req.body;
+  
+  if (!editRequest?.trim()) {
+    return res.apiError('Edit request cannot be empty', 400);
+  }
+
+  console.log("🔧 Processing roadmap edit request:", {
+    userId: req.userId,
+    editType,
+    editRequest: editRequest.substring(0, 100) + '...'
+  });
+
+  // Determine edit type if not provided
+  const detectedEditType = editType || detectRoadmapEditRequest(editRequest);
+  
+  if (!detectedEditType) {
+    return res.apiError('Could not understand your modification request. Please be more specific.', 400);
+  }
+
+  const editResponse = await chatService.processRoadmapModification(
+    req.userId,
+    editRequest,
+    detectedEditType,
+    { currentRoadmap }
+  );
+
+  res.apiSuccess({
+    response: editResponse.response,
+    roadmapUpdated: editResponse.roadmapUpdated,
+    updateDetails: editResponse.updateDetails
+  }, 'Roadmap modification completed');
+}));
 
 // Preview roadmap modification without saving
 router.post('/preview-roadmap-edit', async (req, res) => {
@@ -226,29 +210,6 @@ router.get('/roadmap-suggestions/:userId', async (req, res) => {
   }
 });
 
-// Get modification history
-router.get('/modification-history/:userId', async (req, res) => {
-  try {
-    const { userId } = req.params;
-    
-    console.log("📜 Getting modification history for user:", userId);
-
-    const history = await chatService.getModificationHistory(userId);
-
-    res.json({
-      success: true,
-      ...history
-    });
-
-  } catch (error) {
-    console.error('❌ Error getting modification history:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message || 'Failed to get modification history'
-    });
-  }
-});
-
 // Helper functions
 
 function detectResponseType(message) {
@@ -275,8 +236,7 @@ function detectResponseType(message) {
 
 function detectRoadmapEditRequest(message) {
   const lowerMessage = message.toLowerCase();
-  
-  // More comprehensive detection patterns
+
   const modificationPatterns = [
     // Difficulty changes
     { keywords: ['increase', 'difficulty'], type: 'increase_difficulty' },
@@ -320,11 +280,11 @@ function detectRoadmapEditRequest(message) {
     }
   }
   
-  // Special case: "Make my roadmap more challenging" should definitely be detected
-  if (lowerMessage.includes('make') && lowerMessage.includes('roadmap') && 
-      (lowerMessage.includes('challenging') || lowerMessage.includes('difficult'))) {
-    return 'increase_difficulty';
-  }
+  // // Special case: "Make my roadmap more challenging" should definitely be detected
+  // if (lowerMessage.includes('make') && lowerMessage.includes('roadmap') && 
+  //     (lowerMessage.includes('challenging') || lowerMessage.includes('difficult'))) {
+  //   return 'increase_difficulty';
+  // }
   
   return null;
 }
