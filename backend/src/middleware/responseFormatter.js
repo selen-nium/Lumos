@@ -1,14 +1,12 @@
-/**
- * Standardizes API response format across all endpoints
- */
 export const responseFormatter = (req, res, next) => {
   // Success response helper
-  res.apiSuccess = (data, message = 'Success', meta = null) => {
+  res.apiSuccess = (payload, message = 'Success', meta = null) => {
     const response = {
       success: true,
       message,
-      data,
-      timestamp: new Date().toISOString()
+      // REMOVED: data,  ❌ This was undefined!
+      timestamp: new Date().toISOString(),
+      ...payload  // This spreads the actual data
     };
 
     // Add metadata if provided (pagination, etc.)

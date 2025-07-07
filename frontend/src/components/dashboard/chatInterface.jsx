@@ -147,9 +147,10 @@ What would you like to work on today?`,
       const data = await response.json();
       
       if (data.success) {
+        const { response, suggestions, context:newContext } = data;
         const assistantMessage = {
           role: 'assistant',
-          content: data.response,
+          content: response,
           timestamp: new Date().toISOString(),
           suggestions: data.suggestions || [],
           roadmapUpdated: data.roadmapUpdated || false,

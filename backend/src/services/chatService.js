@@ -2,7 +2,6 @@ import ragOrchestrator from './ai/ragOrchestrator.js';
 import llmService from './core/llmService.js';
 import supabaseService from './core/supabaseService.js';
 import userProfileService from './userProfileService.js';
-// import { roadmapDataService } from '../repositories/index.js';
 import roadmapDataService from './data/roadmapDataService.js';
 
 class ChatService {
@@ -11,29 +10,58 @@ class ChatService {
      */
     async processUserMessage(userId, message, options = {}) {
         try {
-            console.log("🤖 Processing chat message:", {
-                userId,
-                messageLength: message.length,
-                responseType: options.responseType,
-                hasRoadmapContext: !!options.roadmapContext
-            });
+            if (options.responseType === 'chat' && !options.hasRoadmapContext) {
+                console.log('ℹ️  Using general LLM fallback');
+                const fallback = await this.processGeneralMessage(userId, message);
+                return {
+                    message:   fallback.message,
+                    response:  fallback.response,
+                    context:   {},
+                    timestamp: fallback.timestamp
+                };
+            }
 
             // Delegate to RAG orchestrator
+            console.log("🔄 Calling RAG orchestrator...");
             const ragResponse = await ragOrchestrator.processQuery(
                 userId, 
                 message, 
                 options
             );
+
+            if (!ragResponse) {
+                console.error("❌ RAG orchestrator returned null/undefined");
+                throw new Error("RAG processing failed - null response");
+            }
+            
+            if (!ragResponse.response) {
+                console.error("❌ RAG response missing 'response' property:", ragResponse);
+                throw new Error("RAG processing failed - missing response content");
+            }
+            
+            if (typeof ragResponse.response !== 'string') {
+                console.error("❌ RAG response.response is not a string:", typeof ragResponse.response);
+                throw new Error("RAG processing failed - invalid response type");
+            }
             
             // Return formatted response with metadata
-            return {
+            const finalResponse = {
                 message: message,
                 response: ragResponse.response,
-                context: ragResponse.context,
+                context: ragResponse.context || {},
                 timestamp: new Date().toISOString()
             };
+
+            return finalResponse;
         } catch (error) {
-            console.error('Error processing user message:', error);
+            console.error('❌ Chat service error details:', {
+                errorName: error.name,
+                errorMessage: error.message,
+                errorStack: error.stack,
+                userId,
+                messageLength: message.length,
+                responseType: options.responseType
+            });
             throw error;
         }
     }

@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "start": "node app.js",
-    "dev": "nodemon src/app.js"
+    "dev": "nodemon src/app.js",
+    "test": "jest"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.8",
@@ -27,6 +28,7 @@
     "eslint": "^9.26.0",
     "eslint-plugin-react": "^7.37.5",
     "globals": "^16.1.0",
+    "jest": "^30.0.4",
     "nodemon": "^3.1.10"
   }
 }

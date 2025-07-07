@@ -190,6 +190,157 @@ class UserDataService {
         }
     }
 
+    async findActiveByUserId(userId) {
+        try {
+        console.log('🗺️ Getting active learning path with modules for user:', userId);
+        
+        const client = this.db.serviceClient;
+        
+        // Get the user's active learning path
+        const { data: pathData, error: pathError } = await client
+            .from('user_learning_paths')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('status', 'active')
+            .single();
+
+        if (pathError && pathError.code !== 'PGRST116') {
+            throw pathError;
+        }
+
+        if (!pathData) {
+            return null;
+        }
+
+        // Get modules for this path with progress
+        const { data: modulesData, error: modulesError } = await client
+            .from('user_module_progress')
+            .select(`
+            *,
+            learning_modules (
+                module_id,
+                module_name,
+                module_description,
+                difficulty,
+                estimated_hours,
+                skills_covered,
+                prerequisites
+            )
+            `)
+            .eq('user_path_id', pathData.user_path_id)
+            .eq('status', 'active')
+            .order('sequence_order');
+
+        if (modulesError) {
+            throw modulesError;
+        }
+
+        // Transform modules data
+        const modules = await Promise.all(
+            (modulesData || []).map(async (moduleProgress) => {
+            const module = moduleProgress.learning_modules;
+            
+            // Get resources for this module
+            const resources = await this.getModuleResources(userId, module.module_id);
+            
+            // Get tasks for this module
+            const tasks = await this.getModuleTasks(userId, module.module_id);
+
+            return {
+                ...module,
+                // Progress data
+                is_completed: moduleProgress.is_completed,
+                completion_date: moduleProgress.completion_date,
+                time_spent_minutes: moduleProgress.time_spent_minutes,
+                progress_percentage: moduleProgress.progress_percentage,
+                sequence_order: moduleProgress.sequence_order,
+                started_at: moduleProgress.started_at,
+                status: moduleProgress.status,
+                // Related content
+                resources,
+                tasks
+            };
+            })
+        );
+        return {
+            ...pathData,
+            modules
+        };
+        } catch (error) {
+        console.error('Error getting active learning path:', error);
+        throw error;
+        }
+    }
+
+    async getModuleResources(userId, moduleId) {
+        try {
+        const client = this.db.serviceClient;
+        
+        const { data, error } = await client
+            .from('module_resources')
+            .select(`
+            sequence_order,
+            is_required,
+            learning_resources (
+                resource_id,
+                resource_title,
+                resource_type,
+                url,
+                description,
+                estimated_time_minutes
+            )
+            `)
+            .eq('module_id', moduleId)
+            .order('sequence_order');
+
+        if (error) throw error;
+
+        return (data || []).map(item => ({
+            ...item.learning_resources,
+            sequence_order: item.sequence_order,
+            is_required: item.is_required
+        }));
+        } catch (error) {
+        console.error('Error getting module resources:', error);
+        return [];
+        }
+    }
+
+    async getModuleTasks(userId, moduleId) {
+        try {
+        const client = this.db.serviceClient;
+        
+        const { data, error } = await client
+            .from('module_tasks')
+            .select(`
+            sequence_order,
+            is_required,
+            hands_on_tasks (
+                task_id,
+                task_title,
+                task_description,
+                task_type,
+                estimated_time_minutes,
+                instructions,
+                solution_url
+            )
+            `)
+            .eq('module_id', moduleId)
+            .order('sequence_order');
+
+        if (error) throw error;
+
+        return (data || []).map(item => ({
+            ...item.hands_on_tasks,
+            sequence_order: item.sequence_order,
+            is_required: item.is_required
+        }));
+        } catch (error) {
+        console.error('Error getting module tasks:', error);
+        return [];
+        }
+    }
+
     async exists(criteria) {
     try {
       // Simple existence check
@@ -201,7 +352,7 @@ class UserDataService {
     } catch (error) {
       return false;
     }
-  }
+    }
 }
 
 const userDataService = new UserDataService();

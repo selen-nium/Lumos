@@ -1,5 +1,5 @@
 import express from 'express';
-import { asyncHandler, createError } from '../middleware/errorHandler.js';
+import { asyncHandler } from '../middleware/errorHandler.js';
 import { responseFormatter } from '../middleware/responseFormatter.js';
 import chatService from '../services/chatService.js';
 
@@ -30,7 +30,7 @@ router.post('/message', basicValidation, asyncHandler(async (req, res) => {
   console.log(`💬 Processing chat message for user: ${req.userId}`);
 
   try {
-    const roadmapEditType = detectRoadmapEditRequest(message); //detect roadmap modif request
+    const roadmapEditType = detectRoadmapEditRequest(message);
     
     if (roadmapEditType) {
       console.log("🔧 Detected roadmap modification request:", roadmapEditType);
@@ -56,7 +56,6 @@ router.post('/message', basicValidation, asyncHandler(async (req, res) => {
 
       } catch (modificationError) {
         console.error("❌ Roadmap modification error:", modificationError);
-        // fall back to regular chat
         console.log("🔄 Falling back to regular chat processing...");
       }
     }
@@ -114,7 +113,6 @@ router.post('/edit-roadmap', basicValidation, asyncHandler(async (req, res) => {
     editRequest: editRequest.substring(0, 100) + '...'
   });
 
-  // Determine edit type if not provided
   const detectedEditType = editType || detectRoadmapEditRequest(editRequest);
   
   if (!detectedEditType) {
@@ -280,12 +278,6 @@ function detectRoadmapEditRequest(message) {
     }
   }
   
-  // // Special case: "Make my roadmap more challenging" should definitely be detected
-  // if (lowerMessage.includes('make') && lowerMessage.includes('roadmap') && 
-  //     (lowerMessage.includes('challenging') || lowerMessage.includes('difficult'))) {
-  //   return 'increase_difficulty';
-  // }
-  
   return null;
 }
 
@@ -335,7 +327,6 @@ function generateRoadmapEditSuggestions(editType, currentProgress = 0) {
     ]
   };
   
-  // Add progress-based suggestions
   const baseSuggestions = suggestions[editType] || [
     "What other changes would you like to make?",
     "How else can I customize your learning path?",
@@ -383,7 +374,6 @@ async function generateSuggestions(message, context) {
         suggestions.push("Adjust the module difficulty");
       }
     } else {
-      // Default suggestions
       suggestions.push("Can you help me with my learning?");
       suggestions.push("What should I study next?");
       suggestions.push("Create a personalized roadmap for me");
