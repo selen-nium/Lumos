@@ -1,4 +1,3 @@
-// import { roadmapRepository, contentRepository } from '../../repositories/index.js';
 import userDataService from '../data/userDataService.js'
 import roadmapDataService from '../data/roadmapDataService.js';
 import contentDataService from '../data/contentDataService.js';
@@ -89,7 +88,7 @@ class RoadmapBusinessService {
     try {
       console.log('📚 Getting roadmap for user:', userId);
 
-      const roadmapData = await roadmapDataService.findActiveByUserId(userId);
+      const roadmapData = await userDataService.findActiveByUserId(userId);
       
       if (!roadmapData) {
         return {
@@ -191,7 +190,7 @@ class RoadmapBusinessService {
    */
   async getRecommendations(userId, type = 'next_steps') {
     try {
-      const roadmapData = await roadmapDataService.findActiveByUserId(userId);
+      const roadmapData = await userDataService.findActiveByUserId(userId);
       const userData = await userDataService.getProfile(userId);
 
       if (!roadmapData) {
@@ -219,10 +218,7 @@ class RoadmapBusinessService {
     }
   }
 
-  // ========================================
-  // PRIVATE HELPER METHODS
-  // ========================================
-
+  //utils
   async _updateUserProfileData(userId, profileData) {
     const operations = [];
 
@@ -257,19 +253,25 @@ class RoadmapBusinessService {
     }
   }
 
-  _calculateEstimatedCompletion(totalHours, completedModules, totalModules, weeklyHours) {
+  _calculateEstimatedCompletion = (totalHours, completedModules, totalModules, weeklyHours) => {
     const remainingModules = totalModules - completedModules;
     if (remainingModules === 0) return new Date().toISOString();
+    
+    //avoid division by zero
+    if (totalModules === 0 || weeklyHours === 0) return new Date().toISOString();
     
     const avgHoursPerModule = totalHours / totalModules;
     const remainingHours = remainingModules * avgHoursPerModule;
     const weeksRemaining = Math.ceil(remainingHours / weeklyHours);
     
+    // Prevent invalid dates by capping the weeks
+    const cappedWeeks = Math.min(weeksRemaining, 520); // Max 10 years
+    
     const completionDate = new Date();
-    completionDate.setDate(completionDate.getDate() + (weeksRemaining * 7));
+    completionDate.setDate(completionDate.getDate() + (cappedWeeks * 7));
     
     return completionDate.toISOString();
-  }
+  };
 
   _calculateAchievements(stats) {
     const achievements = [];

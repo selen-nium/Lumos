@@ -70,7 +70,7 @@ class UserProfileService {
     }
 
     /**
-     * Create a comprehensive user context for RAG
+     * Create user context for RAG
      */
     async createUserContext(userId) {
         try {
@@ -149,7 +149,7 @@ class UserProfileService {
                 throw new Error(`Validation failed: ${user.getErrors().map(e => e.message).join(', ')}`);
             }
             
-            const saved = await userDataServic.updateProfile(userId, user.toDatabase());
+            const saved = await userDataService.updateProfile(userId, user.toDatabase());
             return new User(saved);
         } catch (error) {
             console.error('Error updating user profile:', error);
@@ -164,7 +164,7 @@ class UserProfileService {
         try {
             console.log('💼 Updating user skills via data service:', userId);
             
-            return await userDataServic.updateUserSkills(userId, skillIds);
+            return await userDataService.updateUserSkills(userId, skillIds);
         } catch (error) {
             console.error('Error updating user skills:', error);
             throw error;
@@ -178,7 +178,7 @@ class UserProfileService {
         try {
             console.log('🎯 Updating user goals via data service:', userId);
             
-            return await userDataServic.updateUserGoals(userId, goalIds);
+            return await userDataService.updateUserGoals(userId, goalIds);
         } catch (error) {
             console.error('Error updating user goals:', error);
             throw error;
@@ -188,151 +188,151 @@ class UserProfileService {
     /**
      * Complete user onboarding
      */
-    async completeOnboarding(userId, onboardingData) {
-        try {
-            console.log('🎉 Completing user onboarding:', userId);
+    // async completeOnboarding(userId, onboardingData) {
+    //     try {
+    //         console.log('🎉 Completing user onboarding:', userId);
             
-            const operations = [];
+    //         const operations = [];
 
-            // Update profile with onboarding data
-            if (onboardingData.profileUpdates) {
-                operations.push(async () => {
-                    return await userDataService.updateProfile(userId, {
-                        ...onboardingData.profileUpdates,
-                        onboarding_complete: true
-                    });
-                });
-            }
+    //         // Update profile with onboarding data
+    //         if (onboardingData.profileUpdates) {
+    //             operations.push(async () => {
+    //                 return await userDataService.updateProfile(userId, {
+    //                     ...onboardingData.profileUpdates,
+    //                     onboarding_complete: true
+    //                 });
+    //             });
+    //         }
 
-            // Update skills
-            if (onboardingData.skills && onboardingData.skills.length > 0) {
-                operations.push(async () => {
-                    return await userDataService.updateUserSkills(userId, onboardingData.skills);
-                });
-            }
+    //         // Update skills
+    //         if (onboardingData.skills && onboardingData.skills.length > 0) {
+    //             operations.push(async () => {
+    //                 return await userDataService.updateUserSkills(userId, onboardingData.skills);
+    //             });
+    //         }
 
-            // Update goals
-            if (onboardingData.goals && onboardingData.goals.length > 0) {
-                operations.push(async () => {
-                    return await userDataService.updateUserGoals(userId, onboardingData.goals);
-                });
-            }
+    //         // Update goals
+    //         if (onboardingData.goals && onboardingData.goals.length > 0) {
+    //             operations.push(async () => {
+    //                 return await userDataService.updateUserGoals(userId, onboardingData.goals);
+    //             });
+    //         }
 
-            // Execute all operations sequentially
-            const results = [];
-            for (const operation of operations) {
-                try {
-                    const result = await operation();
-                    results.push(result);
-                } catch (error) {
-                    console.error('Operation failed during onboarding:', error);
-                    throw error;
-                }
-            }
+    //         // Execute all operations sequentially
+    //         const results = [];
+    //         for (const operation of operations) {
+    //             try {
+    //                 const result = await operation();
+    //                 results.push(result);
+    //             } catch (error) {
+    //                 console.error('Operation failed during onboarding:', error);
+    //                 throw error;
+    //             }
+    //         }
 
-            console.log('✅ Onboarding completed successfully');
-            return { success: true, results };
-        } catch (error) {
-            console.error('Error completing onboarding:', error);
-            throw error;
-        }
-    }
+    //         console.log('✅ Onboarding completed successfully');
+    //         return { success: true, results };
+    //     } catch (error) {
+    //         console.error('Error completing onboarding:', error);
+    //         throw error;
+    //     }
+    // }
 
     /**
      * Get user learning statistics using data service
      */
-    async getUserStats(userId) {
-        try {
-            console.log('📊 Getting user statistics via data service:', userId);
+    // async getUserStats(userId) {
+    //     try {
+    //         console.log('📊 Getting user statistics via data service:', userId);
             
-            // Get roadmap stats
-            const roadmapStats = await userDataService.getRoadmapStats(userId);
+    //         // Get roadmap stats
+    //         const roadmapStats = await userDataService.getRoadmapStats(userId);
             
-            // Get basic user data
-            const profile = await userDataService.getProfile(userId);
-            const skills = await userDataService.getUserSkills(userId);
-            const goals = await userDataService.getUserGoals(userId);
+    //         // Get basic user data
+    //         const profile = await userDataService.getProfile(userId);
+    //         const skills = await userDataService.getUserSkills(userId);
+    //         const goals = await userDataService.getUserGoals(userId);
 
-            return {
-                completedModules: roadmapStats.completedModules || 0,
-                totalModules: roadmapStats.totalModules || 0,
-                completionPercentage: roadmapStats.completionPercentage || 0,
-                skillsCount: skills.length,
-                goalsCount: goals.length,
-                roadmap: roadmapStats,
-                timestamp: new Date().toISOString()
-            };
-        } catch (error) {
-            console.error('Error getting user statistics:', error);
-            throw error;
-        }
-    }
+    //         return {
+    //             completedModules: roadmapStats.completedModules || 0,
+    //             totalModules: roadmapStats.totalModules || 0,
+    //             completionPercentage: roadmapStats.completionPercentage || 0,
+    //             skillsCount: skills.length,
+    //             goalsCount: goals.length,
+    //             roadmap: roadmapStats,
+    //             timestamp: new Date().toISOString()
+    //         };
+    //     } catch (error) {
+    //         console.error('Error getting user statistics:', error);
+    //         throw error;
+    //     }
+    // }
 
     /**
      * Get user's learning preferences
      */
-    async getLearningPreferences(userId) {
-        try {
-            console.log('⚙️ Getting learning preferences:', userId);
+    // async getLearningPreferences(userId) {
+    //     try {
+    //         console.log('⚙️ Getting learning preferences:', userId);
             
-            const profile = await userDataService.getProfile(userId);
+    //         const profile = await userDataService.getProfile(userId);
             
-            if (!profile) return null;
+    //         if (!profile) return null;
             
-            return {
-                weeklyLearningHours: profile.weekly_learning_hours || 5,
-                preferredLearningTime: profile.preferred_learning_time || 'evening',
-                careerStage: profile.career_stage || 'student',
-                isEmployed: profile.is_employed === 'yes',
-                userType: profile.user_type || 'mentee'
-            };
-        } catch (error) {
-            console.error('Error getting learning preferences:', error);
-            throw error;
-        }
-    }
+    //         return {
+    //             weeklyLearningHours: profile.weekly_learning_hours || 5,
+    //             preferredLearningTime: profile.preferred_learning_time || 'evening',
+    //             careerStage: profile.career_stage || 'student',
+    //             isEmployed: profile.is_employed === 'yes',
+    //             userType: profile.user_type || 'mentee'
+    //         };
+    //     } catch (error) {
+    //         console.error('Error getting learning preferences:', error);
+    //         throw error;
+    //     }
+    // }
 
     /**
      * Get available skills and goals for reference
      */
-    async getAvailableSkillsAndGoals() {
-        try {
-            console.log('📋 Getting available skills and goals');
+    // async getAvailableSkillsAndGoals() {
+    //     try {
+    //         console.log('📋 Getting available skills and goals');
             
-            const [skills, goals] = await Promise.all([
-                userDataService.getAllSkills(),
-                userDataService.getAllGoals()
-            ]);
+    //         const [skills, goals] = await Promise.all([
+    //             userDataService.getAllSkills(),
+    //             userDataService.getAllGoals()
+    //         ]);
             
-            return { skills, goals };
-        } catch (error) {
-            console.error('Error fetching skills and goals:', error);
-            throw error;
-        }
-    }
+    //         return { skills, goals };
+    //     } catch (error) {
+    //         console.error('Error fetching skills and goals:', error);
+    //         throw error;
+    //     }
+    // }
 
     /**
-     * Get content recommendations (simplified placeholder)
+     * Get content recommendations
      */
-    async getContentRecommendations(userId, type = 'all', limit = 5) {
-        try {
-            console.log('💡 Getting content recommendations:', { userId, type, limit });
+    // async getContentRecommendations(userId, type = 'all', limit = 5) {
+    //     try {
+    //         console.log('💡 Getting content recommendations:', { userId, type, limit });
             
-            // Simplified recommendations based on user's skills and goals
-            const skills = await userDataService.getUserSkills(userId);
-            const goals = await userDataService.getUserGoals(userId);
+    //         // Simplified recommendations based on user's skills and goals
+    //         const skills = await userDataService.getUserSkills(userId);
+    //         const goals = await userDataService.getUserGoals(userId);
             
-            return {
-                recommendations: {
-                    basedOnSkills: skills.slice(0, limit),
-                    basedOnGoals: goals.slice(0, limit)
-                }
-            };
-        } catch (error) {
-            console.error('Error getting content recommendations:', error);
-            throw error;
-        }
-    }
+    //         return {
+    //             recommendations: {
+    //                 basedOnSkills: skills.slice(0, limit),
+    //                 basedOnGoals: goals.slice(0, limit)
+    //             }
+    //         };
+    //     } catch (error) {
+    //         console.error('Error getting content recommendations:', error);
+    //         throw error;
+    //     }
+    // }
 
     /**
      * Check if user exists and has completed onboarding
@@ -361,10 +361,7 @@ class UserProfileService {
         }
     }
 
-    // ========================================
-    // HELPER METHODS
-    // ========================================
-
+    //utils
     /**
      * Determine experience level from career stage
      */
@@ -396,17 +393,17 @@ class UserProfileService {
     /**
      * Get user context summary (for logging/debugging)
      */
-    getUserContextSummary(userContext) {
-        return {
-            userId: userContext.profile?.id,
-            experienceLevel: userContext.experienceLevel,
-            skillsCount: userContext.skills?.length || 0,
-            goalsCount: userContext.goals?.length || 0,
-            timeAvailable: userContext.timeAvailable,
-            hasLearningPath: !!userContext.currentPath,
-            onboardingComplete: userContext.metadata?.hasOnboardingComplete
-        };
-    }
+    // getUserContextSummary(userContext) {
+    //     return {
+    //         userId: userContext.profile?.id,
+    //         experienceLevel: userContext.experienceLevel,
+    //         skillsCount: userContext.skills?.length || 0,
+    //         goalsCount: userContext.goals?.length || 0,
+    //         timeAvailable: userContext.timeAvailable,
+    //         hasLearningPath: !!userContext.currentPath,
+    //         onboardingComplete: userContext.metadata?.hasOnboardingComplete
+    //     };
+    // }
 
     /**
      * Health check for user profile service

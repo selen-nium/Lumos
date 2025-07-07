@@ -902,61 +902,61 @@ class RoadmapDataService {
         }
     }
 
-    async getModificationHistory(userId) {
-        try {
-        console.log('📜 Getting roadmap modification history for user:', userId);
+    // async getModificationHistory(userId) {
+    //     try {
+    //     console.log('📜 Getting roadmap modification history for user:', userId);
         
-        const client = this.db.serviceClient;
+    //     const client = this.db.serviceClient;
         
-        // Get modification history from user_learning_paths
-        const { data: pathData, error: pathError } = await client
-            .from('user_learning_paths')
-            .select('created_at, updated_at, path_name')
-            .eq('user_id', userId)
-            .eq('status', 'active')
-            .single();
+    //     // Get modification history from user_learning_paths
+    //     const { data: pathData, error: pathError } = await client
+    //         .from('user_learning_paths')
+    //         .select('created_at, updated_at, path_name')
+    //         .eq('user_id', userId)
+    //         .eq('status', 'active')
+    //         .single();
 
-        if (pathError && pathError.code !== 'PGRST116') {
-            console.warn('No active learning path found for modification history');
-            return { history: [], lastModified: null, created: null };
-        }
+    //     if (pathError && pathError.code !== 'PGRST116') {
+    //         console.warn('No active learning path found for modification history');
+    //         return { history: [], lastModified: null, created: null };
+    //     }
 
-        // Get archived modules as a proxy for modification history
-        const { data: archivedModules, error: archiveError } = await client
-            .from('user_module_progress')
-            .select(`
-            updated_at,
-            status,
-            learning_modules (module_name)
-            `)
-            .eq('user_id', userId)
-            .eq('status', 'archived')
-            .order('updated_at', { ascending: false })
-            .limit(10);
+    //     // Get archived modules as a proxy for modification history
+    //     const { data: archivedModules, error: archiveError } = await client
+    //         .from('user_module_progress')
+    //         .select(`
+    //         updated_at,
+    //         status,
+    //         learning_modules (module_name)
+    //         `)
+    //         .eq('user_id', userId)
+    //         .eq('status', 'archived')
+    //         .order('updated_at', { ascending: false })
+    //         .limit(10);
 
-        if (archiveError) {
-            console.warn('Error fetching archived modules:', archiveError);
-        }
+    //     if (archiveError) {
+    //         console.warn('Error fetching archived modules:', archiveError);
+    //     }
 
-        // Create a simplified modification history
-        const history = (archivedModules || []).map((item, index) => ({
-            id: `mod_${index}`,
-            type: 'module_archive',
-            description: `Module "${item.learning_modules?.module_name || 'Unknown'}" was modified`,
-            timestamp: item.updated_at,
-            status: item.status
-        }));
+    //     // Create a simplified modification history
+    //     const history = (archivedModules || []).map((item, index) => ({
+    //         id: `mod_${index}`,
+    //         type: 'module_archive',
+    //         description: `Module "${item.learning_modules?.module_name || 'Unknown'}" was modified`,
+    //         timestamp: item.updated_at,
+    //         status: item.status
+    //     }));
 
-        return {
-            history,
-            lastModified: pathData?.updated_at,
-            created: pathData?.created_at
-        };
-        } catch (error) {
-        console.error('Error getting modification history:', error);
-        return { history: [], lastModified: null, created: null };
-        }
-    }
+    //     return {
+    //         history,
+    //         lastModified: pathData?.updated_at,
+    //         created: pathData?.created_at
+    //     };
+    //     } catch (error) {
+    //     console.error('Error getting modification history:', error);
+    //     return { history: [], lastModified: null, created: null };
+    //     }
+    // }
 
     //utils
     generateResourceUrl(resourceTitle, resourceType) {

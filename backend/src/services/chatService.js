@@ -3,6 +3,7 @@ import llmService from './core/llmService.js';
 import supabaseService from './core/supabaseService.js';
 import userProfileService from './userProfileService.js';
 import roadmapDataService from './data/roadmapDataService.js';
+import userDataService from './data/userDataService.js';
 
 class ChatService {
     /**
@@ -78,7 +79,7 @@ class ChatService {
             });
 
             // Get current roadmap data
-            const currentRoadmap = await roadmapDataService.findActiveByUserId(userId);
+            const currentRoadmap = await userDataService.findActiveByUserId(userId);
             if (!currentRoadmap) {
                 return {
                     response: "I couldn't find your current learning roadmap. Please make sure you have completed the onboarding process first.",
@@ -228,236 +229,236 @@ class ChatService {
     /**
      * Generate roadmap from user profile during onboarding
      */
-    async generateInitialRoadmap(userId, options = {}) {
-        try {
-            console.log("🗺️ Generating initial roadmap for user:", userId);
+    // async generateInitialRoadmap(userId, options = {}) {
+    //     try {
+    //         console.log("🗺️ Generating initial roadmap for user:", userId);
             
-            // Delegate to RAG orchestrator
-            const roadmapResult = await ragOrchestrator.generateInitialRoadmap(userId, options);
+    //         // Delegate to RAG orchestrator
+    //         const roadmapResult = await ragOrchestrator.generateInitialRoadmap(userId, options);
             
-            return {
-                success: true,
-                roadmap: roadmapResult.roadmap,
-                timestamp: new Date().toISOString()
-            };
-        } catch (error) {
-            console.error('Error generating initial roadmap:', error);
-            throw error;
-        }
-    }
+    //         return {
+    //             success: true,
+    //             roadmap: roadmapResult.roadmap,
+    //             timestamp: new Date().toISOString()
+    //         };
+    //     } catch (error) {
+    //         console.error('Error generating initial roadmap:', error);
+    //         throw error;
+    //     }
+    // }
 
     /**
      * Get chat completion suggestions for user input
      */
-    async getSuggestions(userId, partialInput) {
-        try {
-            if (!partialInput || partialInput.trim().length < 3) {
-                return this.getDefaultSuggestions(userId);
-            }
+    // async getSuggestions(userId, partialInput) {
+    //     try {
+    //         if (!partialInput || partialInput.trim().length < 3) {
+    //             return this.getDefaultSuggestions(userId);
+    //         }
             
-            // Get user context for personalized suggestions
-            const userContext = await userProfileService.createUserContext(userId);
+    //         // Get user context for personalized suggestions
+    //         const userContext = await userProfileService.createUserContext(userId);
             
-            // Create specialized prompt for suggestions
-            const prompt = `
-                Based on a user starting to type: "${partialInput.trim()}"
+    //         // specialized prompt for suggestions
+    //         const prompt = `
+    //             Based on a user starting to type: "${partialInput.trim()}"
                 
-                Generate 3 potential completions for what they might be asking about.
-                Consider that this user is learning tech skills with these goals: ${userContext.goalsText}.
-                Their current skills include: ${userContext.skillsText}.
+    //             Generate 3 potential completions for what they might be asking about.
+    //             Consider that this user is learning tech skills with these goals: ${userContext.goalsText}.
+    //             Their current skills include: ${userContext.skillsText}.
                 
-                The suggestions should be:
-                1. Complete questions or requests (not just keywords)
-                2. Relevant to learning programming, web development, or tech skills
-                3. Helpful for their current learning journey
-                4. Include roadmap modification options when appropriate
+    //             The suggestions should be:
+    //             1. Complete questions or requests (not just keywords)
+    //             2. Relevant to learning programming, web development, or tech skills
+    //             3. Helpful for their current learning journey
+    //             4. Include roadmap modification options when appropriate
                 
-                Examples of good suggestions:
-                - "How can I improve my JavaScript skills?"
-                - "What should I learn after completing React basics?"
-                - "Can you create a study schedule for this week?"
-                - "Make my roadmap more challenging"
-                - "Add more hands-on projects to my plan"
+    //             Examples of good suggestions:
+    //             - "How can I improve my JavaScript skills?"
+    //             - "What should I learn after completing React basics?"
+    //             - "Can you create a study schedule for this week?"
+    //             - "Make my roadmap more challenging"
+    //             - "Add more hands-on projects to my plan"
                 
-                Return ONLY a JSON object with this format:
-                {
-                  "suggestions": ["suggestion1", "suggestion2", "suggestion3"]
-                }
-            `;
+    //             Return ONLY a JSON object with this format:
+    //             {
+    //               "suggestions": ["suggestion1", "suggestion2", "suggestion3"]
+    //             }
+    //         `;
             
-            // Use LLM service for suggestions
-            const result = await llmService.generateStructuredOutput([
-                { 
-                    role: 'system', 
-                    content: 'You generate helpful autocomplete suggestions for a tech learning platform chat. Always respond with valid JSON.' 
-                },
-                { role: 'user', content: prompt }
-            ], {
-                temperature: 0.7,
-                max_tokens: 150
-            });
+    //         // Use LLM service for suggestions
+    //         const result = await llmService.generateStructuredOutput([
+    //             { 
+    //                 role: 'system', 
+    //                 content: 'You generate helpful autocomplete suggestions for a tech learning platform chat. Always respond with valid JSON.' 
+    //             },
+    //             { role: 'user', content: prompt }
+    //         ], {
+    //             temperature: 0.7,
+    //             max_tokens: 150
+    //         });
             
-            return Array.isArray(result.parsed.suggestions) ? result.parsed.suggestions : [];
+    //         return Array.isArray(result.parsed.suggestions) ? result.parsed.suggestions : [];
             
-        } catch (error) {
-            console.error('Error generating suggestions:', error);
-            return this.getDefaultSuggestions(userId);
-        }
-    }
+    //     } catch (error) {
+    //         console.error('Error generating suggestions:', error);
+    //         return this.getDefaultSuggestions(userId);
+    //     }
+    // }
 
     /**
      * Get default suggestions when AI fails or for new users
      */
-    async getDefaultSuggestions(userId) {
-        try {
-            const userContext = await userProfileService.createUserContext(userId);
+    // async getDefaultSuggestions(userId) {
+    //     try {
+    //         const userContext = await userProfileService.createUserContext(userId);
             
-            const suggestions = [
-                "Can you summarize my learning progress?",
-                "What should I focus on next in my roadmap?",
-                "Help me create a study schedule for this week"
-            ];
+    //         const suggestions = [
+    //             "Can you summarize my learning progress?",
+    //             "What should I focus on next in my roadmap?",
+    //             "Help me create a study schedule for this week"
+    //         ];
 
-            // Add modification suggestions
-            suggestions.push("Make my roadmap more challenging");
-            suggestions.push("Add more practical projects to my plan");
-            suggestions.push("Slow down the pace for better understanding");
+    //         // Add modification suggestions
+    //         suggestions.push("Make my roadmap more challenging");
+    //         suggestions.push("Add more practical projects to my plan");
+    //         suggestions.push("Slow down the pace for better understanding");
 
-            // Customize based on user's experience level
-            if (userContext.experienceLevel === 'beginner') {
-                suggestions.push("What are the most important concepts for beginners?");
-            } else {
-                suggestions.push("What advanced topics should I explore?");
-            }
+    //         // Customize based on user's experience level
+    //         if (userContext.experienceLevel === 'beginner') {
+    //             suggestions.push("What are the most important concepts for beginners?");
+    //         } else {
+    //             suggestions.push("What advanced topics should I explore?");
+    //         }
 
-            return suggestions.slice(0, 3);
-        } catch (error) {
-            console.error('Error getting default suggestions:', error);
-            return [
-                "Can you help me with my learning plan?",
-                "What should I study next?",
-                "How am I doing with my progress?",
-                "Make my roadmap more challenging"
-            ];
-        }
-    }
+    //         return suggestions.slice(0, 3);
+    //     } catch (error) {
+    //         console.error('Error getting default suggestions:', error);
+    //         return [
+    //             "Can you help me with my learning plan?",
+    //             "What should I study next?",
+    //             "How am I doing with my progress?",
+    //             "Make my roadmap more challenging"
+    //         ];
+    //     }
+    // }
 
     /**
      * Analyze user's learning progress and provide insights
      */
-    async analyzeProgress(userId, roadmapContext, modulesContext) {
-        try {
-            if (!roadmapContext || !modulesContext) {
-                return "I don't have access to your current progress data. Please make sure you have an active learning roadmap.";
-            }
+    // async analyzeProgress(userId, roadmapContext, modulesContext) {
+    //     try {
+    //         if (!roadmapContext || !modulesContext) {
+    //             return "I don't have access to your current progress data. Please make sure you have an active learning roadmap.";
+    //         }
 
-            // Use RAG orchestrator for progress analysis
-            const result = await ragOrchestrator.processQuery(
-                userId,
-                "Can you analyze my learning progress and provide insights?",
-                {
-                    responseType: 'progress_analysis',
-                    roadmapContext,
-                    modulesContext
-                }
-            );
+    //         // Use RAG orchestrator for progress analysis
+    //         const result = await ragOrchestrator.processQuery(
+    //             userId,
+    //             "Can you analyze my learning progress and provide insights?",
+    //             {
+    //                 responseType: 'progress_analysis',
+    //                 roadmapContext,
+    //                 modulesContext
+    //             }
+    //         );
 
-            return result.response;
-        } catch (error) {
-            console.error('Error analyzing progress:', error);
-            return "I'm having trouble analyzing your progress right now. You're doing great by staying consistent with your learning! Keep up the good work.";
-        }
-    }
+    //         return result.response;
+    //     } catch (error) {
+    //         console.error('Error analyzing progress:', error);
+    //         return "I'm having trouble analyzing your progress right now. You're doing great by staying consistent with your learning! Keep up the good work.";
+    //     }
+    // }
 
     /**
      * Generate study schedule based on user's available time and roadmap
      */
-    async generateStudySchedule(userId, roadmapContext, modulesContext, timeframe = 'week') {
-        try {
-            // Use RAG orchestrator for study planning
-            const result = await ragOrchestrator.processQuery(
-                userId,
-                `Create a ${timeframe}ly study schedule for me`,
-                {
-                    responseType: 'study_planning',
-                    roadmapContext,
-                    modulesContext
-                }
-            );
+    // async generateStudySchedule(userId, roadmapContext, modulesContext, timeframe = 'week') {
+    //     try {
+    //         // Use RAG orchestrator for study planning
+    //         const result = await ragOrchestrator.processQuery(
+    //             userId,
+    //             `Create a ${timeframe}ly study schedule for me`,
+    //             {
+    //                 responseType: 'study_planning',
+    //                 roadmapContext,
+    //                 modulesContext
+    //             }
+    //         );
 
-            return result.response;
-        } catch (error) {
-            console.error('Error generating study schedule:', error);
-            const userContext = await userProfileService.createUserContext(userId);
-            return `Based on your ${userContext.timeAvailable} hours per week, I recommend dedicating about ${Math.floor(userContext.timeAvailable / 3)} hours every few days to stay consistent. Focus on one module at a time and don't forget to practice what you learn!`;
-        }
-    }
+    //         return result.response;
+    //     } catch (error) {
+    //         console.error('Error generating study schedule:', error);
+    //         const userContext = await userProfileService.createUserContext(userId);
+    //         return `Based on your ${userContext.timeAvailable} hours per week, I recommend dedicating about ${Math.floor(userContext.timeAvailable / 3)} hours every few days to stay consistent. Focus on one module at a time and don't forget to practice what you learn!`;
+    //     }
+    // }
 
     /**
      * Get roadmap modification history
      */
-    async getModificationHistory(userId) {
-        try {
-            console.log("📜 Getting roadmap modification history for user:", userId);
-            return await roadmapDataService.getModificationHistory(userId);
-        } catch (error) {
-            console.error('Error getting modification history:', error);
-            return { history: [], lastModified: null, created: null };
-        }
-    }
+    // async getModificationHistory(userId) {
+    //     try {
+    //         console.log("📜 Getting roadmap modification history for user:", userId);
+    //         return await roadmapDataService.getModificationHistory(userId);
+    //     } catch (error) {
+    //         console.error('Error getting modification history:', error);
+    //         return { history: [], lastModified: null, created: null };
+    //     }
+    // }
 
     /**
      * Validate roadmap modification request
      */
-    validateModificationRequest(message, editType) {
-        const validationRules = {
-            'increase_difficulty': () => {
-                return message.toLowerCase().includes('difficulty') || 
-                    message.toLowerCase().includes('challenge') ||
-                    message.toLowerCase().includes('advanced') ||
-                    message.toLowerCase().includes('harder');
-            },
-            'decrease_difficulty': () => {
-                return message.toLowerCase().includes('easier') ||
-                    message.toLowerCase().includes('simpler') ||
-                    message.toLowerCase().includes('basic') ||
-                    message.toLowerCase().includes('beginner');
-            },
-            'add_modules': () => {
-                return message.toLowerCase().includes('add') &&
-                    (message.toLowerCase().includes('module') || 
-                        message.toLowerCase().includes('topic') ||
-                        message.toLowerCase().includes('skill') ||
-                        message.toLowerCase().includes('project'));
-            },
-            'remove_modules': () => {
-                return message.toLowerCase().includes('remove') ||
-                    message.toLowerCase().includes('skip') ||
-                    message.toLowerCase().includes('exclude') ||
-                    message.toLowerCase().includes('delete');
-            },
-            'accelerate_pace': () => {
-                return message.toLowerCase().includes('faster') ||
-                    message.toLowerCase().includes('speed') ||
-                    message.toLowerCase().includes('accelerate') ||
-                    message.toLowerCase().includes('quick');
-            },
-            'slow_pace': () => {
-                return message.toLowerCase().includes('slower') ||
-                    message.toLowerCase().includes('slow') ||
-                    message.toLowerCase().includes('more time') ||
-                    message.toLowerCase().includes('extend');
-            },
-            'change_focus': () => {
-                return message.toLowerCase().includes('focus') ||
-                    message.toLowerCase().includes('emphasize') ||
-                    message.toLowerCase().includes('concentrate');
-            }
-        };
+    // validateModificationRequest(message, editType) {
+    //     const validationRules = {
+    //         'increase_difficulty': () => {
+    //             return message.toLowerCase().includes('difficulty') || 
+    //                 message.toLowerCase().includes('challenge') ||
+    //                 message.toLowerCase().includes('advanced') ||
+    //                 message.toLowerCase().includes('harder');
+    //         },
+    //         'decrease_difficulty': () => {
+    //             return message.toLowerCase().includes('easier') ||
+    //                 message.toLowerCase().includes('simpler') ||
+    //                 message.toLowerCase().includes('basic') ||
+    //                 message.toLowerCase().includes('beginner');
+    //         },
+    //         'add_modules': () => {
+    //             return message.toLowerCase().includes('add') &&
+    //                 (message.toLowerCase().includes('module') || 
+    //                     message.toLowerCase().includes('topic') ||
+    //                     message.toLowerCase().includes('skill') ||
+    //                     message.toLowerCase().includes('project'));
+    //         },
+    //         'remove_modules': () => {
+    //             return message.toLowerCase().includes('remove') ||
+    //                 message.toLowerCase().includes('skip') ||
+    //                 message.toLowerCase().includes('exclude') ||
+    //                 message.toLowerCase().includes('delete');
+    //         },
+    //         'accelerate_pace': () => {
+    //             return message.toLowerCase().includes('faster') ||
+    //                 message.toLowerCase().includes('speed') ||
+    //                 message.toLowerCase().includes('accelerate') ||
+    //                 message.toLowerCase().includes('quick');
+    //         },
+    //         'slow_pace': () => {
+    //             return message.toLowerCase().includes('slower') ||
+    //                 message.toLowerCase().includes('slow') ||
+    //                 message.toLowerCase().includes('more time') ||
+    //                 message.toLowerCase().includes('extend');
+    //         },
+    //         'change_focus': () => {
+    //             return message.toLowerCase().includes('focus') ||
+    //                 message.toLowerCase().includes('emphasize') ||
+    //                 message.toLowerCase().includes('concentrate');
+    //         }
+    //     };
         
-        const validator = validationRules[editType];
-        return validator ? validator() : true; // Default to true for unknown types
-    }
+    //     const validator = validationRules[editType];
+    //     return validator ? validator() : true; // Default to true for unknown types
+    // }
 
     /**
      * Generate quick roadmap modification suggestions
@@ -525,7 +526,7 @@ class ChatService {
             console.log("👁️ Generating roadmap modification preview:", { userId, editType });
 
             // Get current roadmap data
-            const currentRoadmap = await roadmapDataService.findActiveByUserId(userId);
+            const currentRoadmap = await userDataService.findActiveByUserId(userId);
             if (!currentRoadmap) {
                 throw new Error("No active roadmap found");
             }

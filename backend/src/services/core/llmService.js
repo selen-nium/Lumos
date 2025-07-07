@@ -8,7 +8,7 @@ class LLMService {
     this.defaultChatModel = 'gpt-4o-mini';
     this.defaultEmbeddingModel = 'text-embedding-3-small';
     
-    // Default parameters
+    // Default params
     this.defaultChatParams = {
       temperature: 0.1,
       max_tokens: 800,
@@ -18,9 +18,6 @@ class LLMService {
     };
   }
 
-  /**
-   * Lazy initialization of OpenAI client
-   */
   getOpenAIClient() {
     if (!this.openai) {
       if (!process.env.OPENAI_API_KEY) {
@@ -37,9 +34,7 @@ class LLMService {
     return this.openai;
   }
 
-  /**
-   * Generate chat completion - handles all OpenAI chat API calls
-   */
+  //handles chat api calls
   async generateChatCompletion(messages, options = {}) {
     try {
       const params = {
@@ -224,9 +219,7 @@ class LLMService {
     });
   }
 
-  /**
-   * Generate text embeddings
-   */
+  //generate text embeddings
   async generateEmbedding(text, options = {}) {
     try {
       if (!text || typeof text !== 'string' || text.trim().length === 0) {
@@ -256,9 +249,7 @@ class LLMService {
     }
   }
 
-  /**
-   * Generate chat completion with system prompt
-   */
+
   async generateWithSystemPrompt(systemPrompt, userMessage, options = {}) {
     const messages = [
       { role: 'system', content: systemPrompt },
@@ -306,10 +297,7 @@ class LLMService {
     }
   }
 
-  // ========================================
-  // PRIVATE HELPER METHODS
-  // ========================================
-
+  //utils
   formatMessages(messages) {
     if (!Array.isArray(messages)) {
       throw new Error('Messages must be an array');

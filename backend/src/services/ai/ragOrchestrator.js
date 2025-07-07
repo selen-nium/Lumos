@@ -29,7 +29,6 @@ class RAGOrchestrator {
         return await this.generateStudyPlanWithSchema(query, userContext, options);
       }
       
-      // Regular RAG pipeline for general chat
       const retrievedContext = await this.retrieveRelevantContext(query, userContext);
       const response = await this.generateResponse(query, retrievedContext, userContext, options);
       
@@ -519,34 +518,6 @@ Experience level: ${userContext.experienceLevel}`;
     } catch (error) {
       console.error('❌ Response generation error:', error);
       throw error;
-    }
-  }
-
-  /**
-   * Remove redundant modules based on user's existing skills 
-   */
-  removeRedundantModules(roadmap, knownSkills = []) {
-    try {
-      console.log("🧹 Removing redundant modules...");
-      
-      const knownSkillNames = knownSkills.map(s => s.name.toLowerCase());
-
-      const isRedundant = (module) =>
-        module.skills_covered?.some(skill =>
-          knownSkillNames.includes(skill.toLowerCase())
-        );
-
-      if (roadmap.modules) {
-        const originalCount = roadmap.modules.length;
-        roadmap.modules = roadmap.modules.filter(m => !isRedundant(m));
-        const removedCount = originalCount - roadmap.modules.length;
-        console.log(`✂️ Removed ${removedCount} redundant modules`);
-      }
-
-      return roadmap;
-    } catch (error) {
-      console.error('❌ Error removing redundant modules:', error);
-      return roadmap;
     }
   }
 
