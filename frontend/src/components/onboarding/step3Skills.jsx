@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +11,9 @@ import {
 import { Search, Zap, X, CheckCircle, Target } from 'lucide-react';
 
 const Step3Skills = ({ skills, selectedSkills, setSelectedSkills }) => {
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
   const [searchTerm, setSearchTerm] = useState('');
 
   const toggleSkill = (id) => {
@@ -94,7 +97,7 @@ const Step3Skills = ({ skills, selectedSkills, setSelectedSkills }) => {
     <div className="space-y-8">
       <div className="text-center mb-8">
         <div className="w-16 h-16 bg-gradient-to-br from-lumos-primary to-lumos-primary-dark rounded-full flex items-center justify-center mx-auto mb-4">
-          <Zap className="w-8 h-8 text-white" />
+          <Zap className="w-8 h-8 text-black" />
         </div>
         <h2 className="text-2xl font-bold text-foreground mb-2">Your Current Skills</h2>
         <p className="text-muted-foreground">Select the technologies and skills you're comfortable with</p>

@@ -27,13 +27,13 @@ const RoadmapSection = ({ loading, roadmapProgress, modules }) => {
     
     switch (difficultyLevel) {
       case 'advanced':
-        return { icon: '🔴', color: 'text-red-600', bgColor: 'bg-red-50', borderColor: 'border-red-200' };
+        return { icon: <GraduationCap className='w-5 h-5' />, color: 'text-red-600', bgColor: 'bg-red-50', borderColor: 'border-red-200' };
       case 'intermediate':
         return { 
-          icon: '🟡', color: 'text-blue-600', bgColor: 'bg-blue-50', borderColor: 'border-blue-200' };
+          icon: <GraduationCap className='w-5 h-5' />, color: 'text-blue-600', bgColor: 'bg-blue-50', borderColor: 'border-blue-200' };
       case 'beginner':
       default:
-        return { icon: '🟢', color: 'text-green-600', bgColor: 'bg-green-50', borderColor: 'border-green-200' };
+        return { icon: <GraduationCap className='w-5 h-5' />, color: 'text-green-600', bgColor: 'bg-green-50', borderColor: 'border-green-200' };
     }
   };
 
@@ -150,7 +150,7 @@ const RoadmapSection = ({ loading, roadmapProgress, modules }) => {
                         >
                           Module {module.sequence_order || index + 1}
                         </Badge>
-                        
+           
                         <Badge 
                           variant="outline" 
                           className={`text-xs font-medium flex items-center gap-1.5 rounded-full px-3 py-1 ${difficultyInfo.bgColor} ${difficultyInfo.borderColor} ${difficultyInfo.color}`}
@@ -173,10 +173,6 @@ const RoadmapSection = ({ loading, roadmapProgress, modules }) => {
                           <Clock className="h-4 w-4" />
                           <span className="font-medium">{module.estimated_hours || module.estimated_duration_weeks * 2 || 3} hours</span>
                         </div>
-                        {/* <div className="flex items-center gap-1.5">
-                          <GraduationCap className="h-4 w-4" />
-                          <span className="capitalize font-medium">{module.difficulty || 'Beginner'}</span>
-                        </div> */}
                       </div>
                     </div>
                   </div>

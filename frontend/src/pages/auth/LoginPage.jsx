@@ -127,14 +127,14 @@ const LoginPage = () => {
               <Logo />
             </div>
             
-            <div className="space-y-6">
+            {/* <div className="space-y-6">
               <h1 className="text-4xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-black">
                 Welcome Back
               </h1>
               <p className="text-xl text-muted-foreground leading-relaxed">
                 Continue your learning journey with personalized mentorship and curated content.
               </p>
-            </div>
+            </div> */}
           </div>
         </div>
         

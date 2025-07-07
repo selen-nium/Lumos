@@ -1,4 +1,5 @@
 import supabaseService from "../core/supabaseService.js";
+import userDataService from "../data/userDataService.js"
 
 class RoadmapDataService {
     constructor() {
@@ -426,7 +427,7 @@ class RoadmapDataService {
         try {
         console.log('📈 Getting roadmap statistics for user:', userId);
         
-        const roadmapData = await this.findActiveByUserId(userId);
+        const roadmapData = await userDataService.findActiveByUserId(userId);
         
         if (!roadmapData) {
             return {
@@ -820,7 +821,7 @@ class RoadmapDataService {
         console.log('💾 Creating backup of current roadmap for user:', userId);
         
         // Get current roadmap data
-        const currentRoadmap = await this.findActiveByUserId(userId);
+        const currentRoadmap = await userDataService.findActiveByUserId(userId);
         if (!currentRoadmap) return null;
 
         // Create a simple backup entry (we'll store it as JSON in a simple way)

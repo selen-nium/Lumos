@@ -31,6 +31,9 @@ const Step5Review = ({ formik, skills, goals, selectedSkills, selectedGoals, gen
     "Adding hands-on projects...",
     "Finalizing your roadmap..."
   ];
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
 
   useEffect(() => {
     let interval;
@@ -108,14 +111,14 @@ const Step5Review = ({ formik, skills, goals, selectedSkills, selectedGoals, gen
                 value={progress}
                 max={100}
                 variant="lumos"
-                className="w-full shadow-lg"
+                className="w-full"
                 size="lg"
                 showPercentage={true}
               />
-              <div className="flex justify-between items-center">
+              {/* <div className="flex justify-between items-center">
                 <span className="text-sm font-medium text-lumos-primary-dark">{progress}% completed</span>
                 <span className="text-sm text-lumos-primary">{currentMessage}</span>
-              </div>
+              </div> */}
             </div>
           </div>
         </div>

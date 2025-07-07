@@ -5,7 +5,7 @@ import * as Yup from 'yup';
 import { supabase } from '../supabaseClient';
 import { Button } from '@/components/ui/button';
 import Progress from '@/components/ui/progress';
-import { AlertCircle, Loader2, ChevronLeft, ChevronRight, CheckCircle, Sparkles } from 'lucide-react';
+import { AlertCircle, Loader2, ChevronLeft, ChevronRight, CheckCircle, User, Zap, Briefcase, Target, CheckCircle as CheckIcon } from 'lucide-react';
 import Logo from '../components/common/Logo';
 import Step1Profile from '../components/onboarding/Step1Profile';
 import Step2Career from '../components/onboarding/Step2Career';
@@ -341,32 +341,32 @@ const OnboardingPage = () => {
                 step: 1,
                 title: "Personal Information",
                 description: "Tell us about yourself",
-                icon: "👤"
+                icon: <User className='w-6 h-6'/>
               },
               {
                 step: 2,
                 title: "Career & Experience",
                 description: "Share your background",
-                icon: "💼"
+                icon: <Briefcase className='w-6 h-6'/>
               },
               {
                 step: 3,
                 title: "Current Skills",
                 description: "Select your expertise",
-                icon: "🛠️"
+                icon: <Zap className='w-6 h-6'/>
               },
               {
                 step: 4,
                 title: "Learning Goals",
                 description: "Choose your objectives",
-                icon: "🎯",
+                icon: <Target className='w-6 h-6'/>,
                 conditional: true
               },
               {
                 step: 5,
                 title: "Review & Confirm",
                 description: "Finalize your setup",
-                icon: "✅"
+                icon: <CheckIcon className='w-6 h-6'/>
               }
             ].map((item) => {
               // Skip step 4 for mentors
@@ -407,7 +407,7 @@ const OnboardingPage = () => {
                         flex items-center gap-3 mb-2
                         ${isCurrent ? 'text-blue-600' : isCompleted ? 'text-gray-700' : 'text-gray-500'}
                       `}>
-                        <span className="text-xl">{item.icon}</span>
+                        <span className=''>{item.icon}</span>
                         <h3 className={`
                           font-semibold
                           ${isCurrent ? 'text-lg' : 'text-base'}

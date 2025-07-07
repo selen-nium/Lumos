@@ -498,7 +498,7 @@ const CommunityPage = () => {
           {featuredMentors.length > 0 && (
             <div className="mb-12 animate-slide-up">
               <Card className="card-minimal-hover overflow-hidden">
-                <CardHeader className="">
+                <CardHeader>
                   <CardTitle className="text-2xl flex items-center gap-3">
                     <Sparkles className="h-6 w-6 text-purple-600" />
                     Featured Mentors
@@ -510,41 +510,47 @@ const CommunityPage = () => {
                     Mentors with expertise in your learning goals: {userGoals.slice(0, 3).join(', ')}
                   </p>
                 </CardHeader>
+
                 <CardContent className="p-8">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {featuredMentors.map((mentor, index) => {
+                    {featuredMentors.map((mentor) => {
                       const buttonState = getRequestButtonState(mentor.id);
-                      
+
                       return (
-                        <Card key={mentor.id} className="card-minimal-hover border-2 border-purple-200/50 hover:border-purple-300 transition-all">
+                        <Card
+                          key={mentor.id}
+                          className="card-minimal-hover border-2 border-purple-200/50 hover:border-purple-300 transition-all"
+                        >
                           <CardContent className="p-6 text-center">
-                            <div className="relative mb-4">
-                              <Avatar className="h-35 w-35 mx-auto ring-4 ring-purple-200">
-                                <AvatarImage 
-                                  src={mentor.profile_picture_url || undefined} 
-                                  alt={mentor.username}
-                                  className="object-cover"
-                                />
-                                <AvatarFallback className="bg-gradient-to-br from-purple-500 to-purple-600 text-white text-xl font-bold">
-                                  {mentor.initials}
-                                </AvatarFallback>
-                              </Avatar>
-                            </div>
-                            
-                            <h3 className="font-bold text-lg mb-1">{mentor.username}</h3>
+                            <Avatar className="h-35 w-35 mx-auto ring-4 ring-purple-200">
+                              <AvatarImage
+                                src={mentor.profile_picture_url || undefined}
+                                alt={mentor.username}
+                                className="object-cover"
+                              />
+                              <AvatarFallback className="bg-gradient-to-br from-purple-500 to-purple-600 text-white text-xl font-bold">
+                                {mentor.initials}
+                              </AvatarFallback>
+                            </Avatar>
+
+                            <h3 className="font-bold text-lg mt-4">{mentor.username}</h3>
                             <p className="text-sm text-muted-foreground mb-3">
                               {mentor.role} {mentor.company && `at ${mentor.company}`}
                             </p>
-                            
-                            <div className="flex justify-center mb-4">
-                              <Badge variant="outline" className="text-xs">
-                                {mentor.experience}
-                              </Badge>
-                            </div>
-                            
-                            <Dialog>
+
+                            <Badge variant="outline" className="text-xs mb-4">
+                              {mentor.experience}
+                            </Badge>
+
+                            {/* --- FIXED: full Dialog with content! --- */}
+                            <Dialog
+                              open={selectedMentor?.id === mentor.id}
+                              onOpenChange={(open) => {
+                                if (!open) setSelectedMentor(null);
+                              }}
+                            >
                               <DialogTrigger asChild>
-                                <Button 
+                                <Button
                                   variant={buttonState.variant}
                                   size="sm"
                                   disabled={buttonState.disabled}
@@ -554,6 +560,80 @@ const CommunityPage = () => {
                                   {buttonState.text}
                                 </Button>
                               </DialogTrigger>
+
+                              <DialogContent className="sm:max-w-lg">
+                                <DialogHeader>
+                                  <DialogTitle className="flex items-center gap-3 text-xl">
+                                    <Avatar className="w-10 h-10">
+                                      <AvatarImage
+                                        src={mentor.profile_picture_url || undefined}
+                                        alt={mentor.username}
+                                        className="object-cover"
+                                      />
+                                      <AvatarFallback className="bg-lumos-primary text-white font-bold">
+                                        {mentor.initials}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    Connect with {mentor.username}
+                                  </DialogTitle>
+                                </DialogHeader>
+
+                                <div className="space-y-6">
+                                  <div className="p-4 bg-gradient-to-r from-lumos-primary-light to-blue-50 rounded-xl">
+                                    <p className="font-semibold text-lumos-primary-dark">
+                                      {mentor.username} • {mentor.experience} • {mentor.role}
+                                    </p>
+                                    {mentor.availability_hours && (
+                                      <p className="text-sm text-lumos-primary-dark/70 mt-1">
+                                        Available: {mentor.availability_hours}
+                                      </p>
+                                    )}
+                                  </div>
+
+                                  <div>
+                                    <label className="block text-sm font-medium mb-3">
+                                      Introduce yourself and explain what you'd like help with:
+                                    </label>
+                                    <Textarea
+                                      placeholder="Hi! I'm interested in learning more about..."
+                                      value={connectionMessage}
+                                      onChange={(e) => setConnectionMessage(e.target.value)}
+                                      className="min-h-[120px] resize-none"
+                                      maxLength={500}
+                                    />
+                                    <div className="text-xs text-muted-foreground text-right mt-2">
+                                      {connectionMessage.length}/500 characters
+                                    </div>
+                                  </div>
+
+                                  <div className="flex justify-end gap-3">
+                                    <Button
+                                      variant="outline"
+                                      onClick={() => setSelectedMentor(null)}
+                                      className="btn-outline-rounded px-6"
+                                    >
+                                      Cancel
+                                    </Button>
+                                    <Button
+                                      onClick={sendConnectionRequest}
+                                      disabled={sendingRequest || !connectionMessage.trim()}
+                                      className="btn-primary-rounded px-6"
+                                    >
+                                      {sendingRequest ? (
+                                        <>
+                                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                                          Sending...
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Heart className="h-4 w-4 mr-2" />
+                                          Send Request
+                                        </>
+                                      )}
+                                    </Button>
+                                  </div>
+                                </div>
+                              </DialogContent>
                             </Dialog>
                           </CardContent>
                         </Card>

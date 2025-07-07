@@ -1,6 +1,12 @@
 import { Target, CheckCircle, Trophy, Star } from 'lucide-react';
+import { useEffect } from 'react';
 
 const Step4Goals = ({ goals, selectedGoals, setSelectedGoals }) => {
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
   const toggleGoal = (id) => {
     setSelectedGoals(prev =>
       prev.includes(id) ? prev.filter(gid => gid !== id) : [...prev, id]
@@ -11,7 +17,7 @@ const Step4Goals = ({ goals, selectedGoals, setSelectedGoals }) => {
     <div className="space-y-8">
       <div className="text-center mb-8">
         <div className="w-16 h-16 bg-gradient-to-br from-lumos-primary to-lumos-primary-dark rounded-full flex items-center justify-center mx-auto mb-4">
-          <Target className="w-8 h-8 text-white" />
+          <Target className="w-8 h-8 text-black" />
         </div>
         <h2 className="text-2xl font-bold text-foreground mb-2">Learning Goals</h2>
         <p className="text-muted-foreground">What would you like to achieve? Select your learning objectives</p>
