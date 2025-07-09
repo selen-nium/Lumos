@@ -17,6 +17,7 @@ import InboxPage from './pages/InboxPage';
 import MessagesPage from './pages/MessagesPage';
 import StudyGroupsPage from './pages/studyGroup/StudyGroupsPage';
 import GroupChatPage from './pages/studyGroup/GroupChatPage';
+import AuthCallback from './components/auth/AuthCallback';
 // import AdminPage from './pages/AdminPage';
 
 function App() {
@@ -29,8 +30,8 @@ function App() {
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
-          
-          {/* Protected routes */}
+          <Route path="/auth/callback" element={<AuthCallback />} />
+
           <Route path="/onboarding" element={
             <ProtectedRoute>
               <OnboardingPage />
@@ -90,13 +91,7 @@ function App() {
               <ProfilePage />
             </ProtectedRoute>
           } />
-          
-          {/* Admin route
-          <Route path="/admin" element={
-            <ProtectedRoute requireAdmin={true}>
-              <AdminPage />
-            </ProtectedRoute>
-          } /> */}
+        
           
           {/* Default redirect */}
           <Route path="/" element={<Navigate to="/home" replace />} />

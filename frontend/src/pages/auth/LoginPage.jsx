@@ -12,17 +12,10 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, Github } from "lucide-react";
 import Logo from '../../components/common/Logo';
 
-// Background Pattern Component
-const BackgroundPattern = () => (
-  <div className="absolute inset-0 overflow-hidden pointer-events-none">
-    <div className="absolute top-0 left-0 w-96 h-96 bg-gradient-to-br from-lumos-primary/10 to-lumos-primary-light/5 rounded-full filter blur-3xl transform -translate-x-1/2 -translate-y-1/2"></div>
-    <div className="absolute bottom-0 right-0 w-96 h-96 bg-gradient-to-tl from-lumos-primary/5 to-lumos-primary-muted/10 rounded-full filter blur-3xl transform translate-x-1/2 translate-y-1/2"></div>
-  </div>
-);
-
 const LoginPage = () => {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const navigate = useNavigate();
 
   // Function to check onboarding status and redirect appropriately
@@ -100,25 +93,33 @@ const LoginPage = () => {
     },
   });
 
-  const handleOAuthLogin = async (provider) => {
+  const handleGoogleLogin = async () => {
     try {
+      setError('');
+      setGoogleLoading(true);
+      
       const { data, error } = await supabase.auth.signInWithOAuth({
-        provider,
+        provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`, // Changed to use callback
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
         },
       });
       
       if (error) throw error;
+      
     } catch (error) {
-      setError(error.message || `Failed to sign in with ${provider}`);
+      console.error('Google OAuth error:', error);
+      setError(error.message || 'Failed to sign in with Google');
+      setGoogleLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-lumos-primary-light via-white to-blue-50 relative">
-      <BackgroundPattern />
-      
       <div className="relative z-10 container mx-auto flex min-h-screen">
         {/* Left side - Logo and Welcome */}
         <div className="hidden lg:flex lg:w-5/12 flex-col justify-center items-center p-8">
@@ -263,21 +264,11 @@ const LoginPage = () => {
                 </div>
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-4">              
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => handleOAuthLogin('github')}
-                  className="w-full h-12 btn-outline-rounded hover-lift"
-                >
-                  <Github className="w-5 h-5 mr-2" />
-                  GitHub
-                </Button>
-                
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => handleOAuthLogin('google')}
+                  onClick={handleGoogleLogin}
                   className="w-full h-12 btn-outline-rounded hover-lift"
                 >
                   <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
@@ -298,7 +289,7 @@ const LoginPage = () => {
                       d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                     />
                   </svg>
-                  Google
+                  Sign in with Google
                 </Button>
               </div>
             </CardContent>
