@@ -7,88 +7,6 @@ class RoadmapDataService {
     }
 
     //core roadmap operations
-    // async findActiveByUserId(userId) {
-    //     try {
-    //     console.log('🗺️ Getting active learning path with modules for user:', userId);
-        
-    //     const client = this.db.serviceClient;
-        
-    //     // Get the user's active learning path
-    //     const { data: pathData, error: pathError } = await client
-    //         .from('user_learning_paths')
-    //         .select('*')
-    //         .eq('user_id', userId)
-    //         .eq('status', 'active')
-    //         .single();
-
-    //     if (pathError && pathError.code !== 'PGRST116') {
-    //         throw pathError;
-    //     }
-
-    //     if (!pathData) {
-    //         return null;
-    //     }
-
-    //     // Get modules for this path with progress
-    //     const { data: modulesData, error: modulesError } = await client
-    //         .from('user_module_progress')
-    //         .select(`
-    //         *,
-    //         learning_modules (
-    //             module_id,
-    //             module_name,
-    //             module_description,
-    //             difficulty,
-    //             estimated_hours,
-    //             skills_covered,
-    //             prerequisites
-    //         )
-    //         `)
-    //         .eq('user_path_id', pathData.user_path_id)
-    //         .eq('status', 'active')
-    //         .order('sequence_order');
-
-    //     if (modulesError) {
-    //         throw modulesError;
-    //     }
-
-    //     // Transform modules data
-    //     const modules = await Promise.all(
-    //         (modulesData || []).map(async (moduleProgress) => {
-    //         const module = moduleProgress.learning_modules;
-            
-    //         // Get resources for this module
-    //         const resources = await this.getModuleResources(userId, module.module_id);
-            
-    //         // Get tasks for this module
-    //         const tasks = await this.getModuleTasks(userId, module.module_id);
-
-    //         return {
-    //             ...module,
-    //             // Progress data
-    //             is_completed: moduleProgress.is_completed,
-    //             completion_date: moduleProgress.completion_date,
-    //             time_spent_minutes: moduleProgress.time_spent_minutes,
-    //             progress_percentage: moduleProgress.progress_percentage,
-    //             sequence_order: moduleProgress.sequence_order,
-    //             started_at: moduleProgress.started_at,
-    //             status: moduleProgress.status,
-    //             // Related content
-    //             resources,
-    //             tasks
-    //         };
-    //         })
-    //     );
-    //     return {
-    //         ...pathData,
-    //         modules
-    //     };
-    //     } catch (error) {
-    //     console.error('Error getting active learning path:', error);
-    //     throw error;
-    //     }
-    // }
-
     async updateUserRoadmap(userId, modifiedRoadmap) {
         try {
         console.log('🔄 Updating user roadmap with modifications for user:', userId);
@@ -461,6 +379,50 @@ class RoadmapDataService {
         }
     }
 
+    async checkRoadmapCompletion(userId) {
+        const stats = await this.getRoadmapStats(userId);
+        return stats.completionPercentage === 100;
+    }
+
+    async archiveRoadmap(userId, userPathId) {
+        try {
+            console.log('📦 Archiving roadmap for user:', userId, 'path:', userPathId);
+            
+            const client = this.db.serviceClient;
+            
+            // Archive the learning path
+            const { error: pathError } = await client
+                .from('user_learning_paths')
+                .update({ 
+                    status: 'completed',
+                    updated_at: new Date().toISOString()
+                })
+                .eq('user_path_id', userPathId)
+                .eq('user_id', userId);
+
+            if (pathError) throw pathError;
+
+            // Archive all associated module progress
+            const { error: moduleError } = await client
+                .from('user_module_progress')
+                .update({ 
+                    status: 'archived',
+                    // updated_at: new Date().toISOString()
+                })
+                .eq('user_path_id', userPathId)
+                .eq('user_id', userId);
+
+            if (moduleError) throw moduleError;
+
+            console.log('✅ Roadmap archived successfully');
+            return { success: true };
+            
+        } catch (error) {
+            console.error('❌ Error archiving roadmap:', error);
+            throw error;
+        }
+    }
+
     //module operations
     async createModule(moduleData) {
         try {
@@ -523,41 +485,41 @@ class RoadmapDataService {
         }
     }
 
-    async updateModuleCompletion(userId, moduleId, isCompleted) {
-        try {
-        console.log('📝 Updating module completion:', { userId, moduleId, isCompleted });
+    // async updateModuleCompletion(userId, moduleId, isCompleted) {
+    //     try {
+    //     console.log('📝 Updating module completion:', { userId, moduleId, isCompleted });
         
-        const client = this.db.serviceClient;
+    //     const client = this.db.serviceClient;
         
-        const updateData = {
-            is_completed: isCompleted,
-            progress_percentage: isCompleted ? 100 : 0,
-            updated_at: new Date().toISOString()
-        };
+    //     const updateData = {
+    //         is_completed: isCompleted,
+    //         progress_percentage: isCompleted ? 100 : 0,
+    //         updated_at: new Date().toISOString()
+    //     };
 
-        if (isCompleted) {
-            updateData.completion_date = new Date().toISOString();
-        } else {
-            updateData.completion_date = null;
-        }
+    //     if (isCompleted) {
+    //         updateData.completion_date = new Date().toISOString();
+    //     } else {
+    //         updateData.completion_date = null;
+    //     }
 
-        const { data, error } = await client
-            .from('user_module_progress')
-            .update(updateData)
-            .eq('user_id', userId)
-            .eq('module_id', moduleId)
-            .select()
-            .single();
+    //     const { data, error } = await client
+    //         .from('user_module_progress')
+    //         .update(updateData)
+    //         .eq('user_id', userId)
+    //         .eq('module_id', moduleId)
+    //         .select()
+    //         .single();
 
-        if (error) throw error;
+    //     if (error) throw error;
 
-        console.log('✅ Module completion updated');
-        return data;
-        } catch (error) {
-        console.error('Error updating module completion:', error);
-        throw error;
-        }
-    }
+    //     console.log('✅ Module completion updated');
+    //     return data;
+    //     } catch (error) {
+    //     console.error('Error updating module completion:', error);
+    //     throw error;
+    //     }
+    // }
 
 
     //module contents

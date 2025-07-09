@@ -1,7 +1,14 @@
 import express from 'express';
 import roadmapBusinessService from '../services/business/roadmapBusinessService.js';
+import roadmapDataService from '../services/data/roadmapDataService.js';
+import { createClient } from '@supabase/supabase-js';
 
 const router = express.Router();
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
 // Generate new roadmap (onboarding)
 router.post('/generate', async (req, res) => {
@@ -28,6 +35,71 @@ router.post('/generate', async (req, res) => {
     res.status(500).json({
       success: false,
       error: error.message || 'Failed to generate roadmap'
+    });
+  }
+});
+
+// generate advanced roadmap after completion
+router.post('/generate-advanced', async (req, res) => {
+  try {
+
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({
+        success: false,
+        error: 'Missing authorization token. Please log in again.'
+      });
+    }
+
+    const token = authHeader.substring(7);
+    
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      console.error('Token verification failed:', authError?.message);
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid or expired token. Please log in again.'
+      });
+    }
+
+    const userId = user.id;
+    console.log('🚀 Generating advanced roadmap for authenticated user:', userId);
+
+    // Check if user has completed roadmap
+    const stats = await roadmapDataService.getRoadmapStats(userId);
+    
+    if (!stats.hasRoadmap) {
+      return res.status(400).json({
+        success: false,
+        error: 'No roadmap found to build upon'
+      });
+    }
+
+    if (stats.completionPercentage < 100) {
+      return res.status(400).json({
+        success: false,
+        error: `Please complete your current roadmap first (${stats.completionPercentage}% completed)`
+      });
+    }
+
+    // Generate advanced roadmap
+    const result = await roadmapBusinessService.generateAdvancedRoadmap(userId);
+    
+    console.log('✅ Advanced roadmap generated successfully');
+    
+    res.json({
+      success: true,
+      message: result.message,
+      roadmapInfo: result.roadmapInfo
+    });
+
+  } catch (error) {
+    console.error('❌ Error generating advanced roadmap:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to generate advanced roadmap'
     });
   }
 });

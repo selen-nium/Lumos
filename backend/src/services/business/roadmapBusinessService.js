@@ -3,6 +3,7 @@ import roadmapDataService from '../data/roadmapDataService.js';
 import contentDataService from '../data/contentDataService.js';
 import { User } from '../../models/index.js';
 import ragOrchestrator from '../ai/ragOrchestrator.js';
+import userProfileService from '../userProfileService.js';
 
 class RoadmapBusinessService {
   /**
@@ -81,6 +82,54 @@ class RoadmapBusinessService {
     }
   }
 
+  //generate new advance roadmap after user has completed prev roadmap
+  async generateAdvancedRoadmap(userId) {
+    try {
+      // Get user's completed roadmap for context
+      const currentRoadmap = await userDataService.findActiveByUserId(userId);
+      if (!currentRoadmap) {
+        throw new Error('No active roadmap found to build upon');
+      }
+      
+      // Mark current roadmap as completed/archived
+      await roadmapDataService.archiveRoadmap(userId, currentRoadmap.user_path_id);
+      
+      // Get user context with completed skills
+      const userContext = await userProfileService.createUserContext(userId);
+      
+      // Generate advanced roadmap using RAG
+      const advancedPrompt = {
+        ...userContext,
+        previousRoadmap: currentRoadmap.path_name,
+        completedSkills: currentRoadmap.modules?.map(m => m.module_name) || [],
+        requestType: 'advanced_follow_up'
+      };
+      
+      const { roadmap: roadmapData } = await ragOrchestrator.generateAdvancedRoadmap(userId, advancedPrompt);
+      
+      // Save new advanced roadmap
+      await roadmapDataService.createLearningPath(userId, roadmapData);
+      console.log('✅ Advanced roadmap created successfully');
+      
+      const stats = await roadmapDataService.getRoadmapStats(userId);
+        
+      return { 
+          success: true, 
+          message: 'Advanced roadmap created!',
+          roadmapInfo: {
+              title: stats.title,
+              totalModules: stats.totalModules,
+              totalHours: stats.estimatedHours,
+              estimatedWeeks: Math.ceil(stats.estimatedHours / 10),
+              type: 'advanced_follow_up'
+          }
+      };
+    } catch (error) {
+      console.error('Error generating advanced roadmap:', error);
+      throw error;
+    }
+  }
+
   /**
    * Get user's roadmap with all details
    */
@@ -122,7 +171,8 @@ class RoadmapBusinessService {
     try {
       console.log('📝 Updating module completion:', { moduleId, userId, isCompleted });
 
-      const result = await roadmapDataService.updateModuleCompletion(userId, moduleId, isCompleted);
+      // const result = await roadmapDataService.updateModuleCompletion(userId, moduleId, isCompleted);
+      const isRoadmapComplete = await userDataService.checkRoadmapCompletion(userId);
       
       // Get updated stats
       const stats = await roadmapDataService.getRoadmapStats(userId);
@@ -133,7 +183,8 @@ class RoadmapBusinessService {
         progress: {
           totalModules: stats.totalModules,
           completedModules: stats.completedModules,
-          completedPercentage: stats.completionPercentage
+          completedPercentage: stats.completionPercentage,
+          isRoadmapComplete
         }
       };
 

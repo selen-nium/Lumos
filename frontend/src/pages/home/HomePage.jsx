@@ -350,7 +350,6 @@ const HomePage = () => {
     localStorage.setItem('homepage-left-width', leftWidth.toString());
   }, [leftWidth]);
 
-  // Add these mouse event handlers
   const handleMouseDown = useCallback((e) => {
     e.preventDefault();
     setIsResizing(true);
@@ -422,6 +421,11 @@ const HomePage = () => {
     };
   }, [handleMouseMove, handleMouseUp]);
 
+  const handleRoadmapComplete = useCallback(async () => {
+    console.log("🎉 Roadmap completion triggered, refreshing data...");
+    await fetchRoadmapFromDB(true); // Force a fresh reload with loading
+  }, [fetchRoadmapFromDB]);
+
   // Loading state
   if (loading || !userProfile) {
     return (
@@ -456,7 +460,8 @@ const HomePage = () => {
           <RoadmapSection 
             loading={loading} 
             roadmapProgress={roadmapProgress} 
-            modules={modules} 
+            modules={modules}
+            onRoadmapComplete={handleRoadmapComplete}
           />
         </div>
 

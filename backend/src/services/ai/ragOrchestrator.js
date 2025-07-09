@@ -142,6 +142,63 @@ Experience level: ${userContext.experienceLevel}`;
     }
   }
 
+  /**
+   * Generate advanced roadmap for completed users
+   */
+  async generateAdvancedRoadmap(userId, advancedPrompt) {
+      try {
+          console.log("🚀 Generating advanced roadmap for user:", userId);
+          
+          // Create system prompt for advanced roadmap
+          const systemPrompt = promptService.getAdvancedRoadmapPrompt(advancedPrompt);
+          
+          const query = `Generate an advanced follow-up roadmap based on my completed learning path: "${advancedPrompt.previousRoadmap}".
+          
+  My completed skills now include: ${advancedPrompt.completedSkills.join(', ')}.
+  My original goals were: ${advancedPrompt.goalsText}.
+  Experience level: ${advancedPrompt.experienceLevel}
+  Available time: ${advancedPrompt.timeAvailable} hours per week.
+
+  Create a more advanced roadmap that builds upon what I've learned and takes me to the next level in this domain.`;
+          
+          // Use schema-based generation for consistency
+          const result = await llmService.generateRoadmapWithSchema(
+              systemPrompt,
+              query,
+              schemas.roadmapGeneration,
+              {
+                  temperature: 0.3,
+                  max_tokens: 4000
+              }
+          );
+          
+          const roadmap = result.parsed;
+          
+          console.log("🔍 Advanced roadmap structure:", {
+              title: roadmap.roadmap_title,
+              modulesCount: roadmap.modules?.length || 0,
+              hasValidStructure: !!(roadmap.modules && Array.isArray(roadmap.modules)),
+              overallDifficulty: roadmap.overall_difficulty
+          });
+
+          // Add metadata for advanced roadmap
+          roadmap.generationMethod = 'advanced_follow_up';
+          roadmap.previousRoadmap = advancedPrompt.previousRoadmap;
+          roadmap.userContext = {
+              completedSkills: advancedPrompt.completedSkills,
+              goals: advancedPrompt.goalsText,
+              experienceLevel: advancedPrompt.experienceLevel
+          };
+          
+          console.log("✅ Advanced roadmap generated successfully");
+          return { roadmap };
+          
+      } catch (error) {
+          console.error('❌ Advanced roadmap generation error:', error);
+          throw error;
+      }
+  }
+
   async getRoadmapGenerationStats() {
     try {
       const templateStats = await learningPathTemplateService.healthCheck();

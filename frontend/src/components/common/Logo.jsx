@@ -5,7 +5,7 @@ const Logo = () => {
     <div className="text-center py-2">
       <Link to="/home" className="inline-flex items-center group">
         <img
-          src="/Lumos/logo5.png"
+          src="/logo5.png"
           alt="Lumos Logo"
           className="h-16 mr-4 transition-transform group-hover:scale-105"
         />

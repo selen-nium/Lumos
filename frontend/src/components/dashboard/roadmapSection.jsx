@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import Progress from '../ui/progress'
+import Progress from '../ui/progress';
 import 'react-vertical-timeline-component/style.min.css';
 import { VerticalTimeline, VerticalTimelineElement } from 'react-vertical-timeline-component';
 import {
@@ -15,12 +15,127 @@ import {
   ChevronRight,
   Code,
   GraduationCap,
-  Play
+  Play,
+  Sparkles,
+  Trophy,
+  Rocket
 } from 'lucide-react';
+import Lottie from "react-lottie-player";
+import confettiAnimation from "../../assets/animation/confetti.json";
+import trophyAnimation from '../../assets/animation/trophy.json';
+import { supabase } from '@/supabaseClient';
 
-const RoadmapSection = ({ loading, roadmapProgress, modules }) => {
-  // const [selectedModule, setSelectedModule] = useState(0);
+const RoadmapSection = ({ loading, roadmapProgress, modules, onRoadmapComplete }) => {
   const [hoveredModule, setHoveredModule] = useState(null);
+  const [showCompletionCelebration, setShowCompletionCelebration] = useState(false);
+  const [isCreatingAdvancedRoadmap, setIsCreatingAdvancedRoadmap] = useState(false);
+  const [advancedProgress, setAdvancedProgress] = useState(0);
+  const [currentProgressMessage, setCurrentProgressMessage] = useState('');
+
+  const progressMessages = [
+    "Analyzing your completed skills...",
+    "Finding advanced learning resources...",
+    "Creating challenging modules...",
+    "Optimizing your advanced path...",
+    "Adding complex projects...",
+    "Finalizing your advanced roadmap..."
+  ];
+
+  //progress simulation
+  useEffect(() => {
+    let interval;
+    if (isCreatingAdvancedRoadmap) {
+      setAdvancedProgress(0);
+      setCurrentProgressMessage(progressMessages[0]);
+      
+      const totalTime = 30000; // 30 seconds (shorter than onboarding)
+      const incrementTime = totalTime / 100;
+      let current = 0;
+      let messageIndex = 0;
+      
+      interval = setInterval(() => {
+        current += 1;
+        setAdvancedProgress(current);
+        
+        // Update message based on progress
+        const newMessageIndex = Math.floor((current / 100) * progressMessages.length);
+        if (newMessageIndex !== messageIndex && newMessageIndex < progressMessages.length) {
+          messageIndex = newMessageIndex;
+          setCurrentProgressMessage(progressMessages[messageIndex]);
+        }
+        
+        if (current >= 99) {
+          clearInterval(interval);
+          setCurrentProgressMessage("Almost ready...");
+        }
+      }, incrementTime);
+    }
+    return () => clearInterval(interval);
+  }, [isCreatingAdvancedRoadmap]);
+
+  // Check for roadmap completion
+  const isRoadmapComplete = roadmapProgress?.completedPercentage === 100 && roadmapProgress?.totalModules > 0;
+
+  // Show celebration when roadmap becomes complete
+  useEffect(() => {
+    if (isRoadmapComplete && !showCompletionCelebration) {
+      // Small delay to let the progress update animate first
+      setTimeout(() => {
+        setShowCompletionCelebration(true);
+      }, 500);
+    }
+  }, [isRoadmapComplete, showCompletionCelebration]);
+
+  const handleCreateAdvancedRoadmap = async () => {
+    try {
+      setIsCreatingAdvancedRoadmap(true);
+      
+      // Get the current session for authentication
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !session) {
+        throw new Error('Authentication required. Please log in again.');
+      }
+      
+      console.log('🔐 Using session token for advanced roadmap request');
+      
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/roadmap/generate-advanced`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP ${response.status}: Failed to create advanced roadmap`);
+      }
+
+      const data = await response.json();
+      
+      if (data.success) {
+        // Hide celebration modal
+        setShowCompletionCelebration(false);
+        
+        // Trigger roadmap refresh
+        if (onRoadmapComplete) {
+          onRoadmapComplete();
+        }
+        
+        // Show success notification
+        console.log('✅ Advanced roadmap created:', data.roadmapInfo);
+      } else {
+        throw new Error(data.error || 'Failed to create advanced roadmap');
+      }
+    } catch (error) {
+      console.error('❌ Error creating advanced roadmap:', error);
+      alert(`Failed to create advanced roadmap: ${error.message}`);
+    } finally {
+      setIsCreatingAdvancedRoadmap(false);
+    }
+  };
 
   const getDifficultyIndicator = (difficulty) => {
     const difficultyLevel = difficulty?.toLowerCase() || 'beginner';
@@ -50,31 +165,147 @@ const RoadmapSection = ({ loading, roadmapProgress, modules }) => {
 
   return (
     <div className="overflow-y-auto h-full p-6">
+      {/* Completion Celebration */}
+      {showCompletionCelebration && (
+        <div className="fixed inset-0 z-50">
+          {/* Confetti Animation */}
+          <Lottie
+            loop
+            play
+            animationData={confettiAnimation}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              pointerEvents: 'none',
+              zIndex: 50
+            }}
+          />
+
+          {/* Celebration Modal */}
+          <div className="absolute inset-0 flex items-center justify-center z-60 bg-black/20 backdrop-blur-sm">
+            <div className="bg-white rounded-3xl shadow-2xl p-10 max-w-lg text-center card-minimal-hover animate-slide-up">
+              
+              {/* Show progress bar when creating advanced roadmap */}
+              {isCreatingAdvancedRoadmap ? (
+                <div className="mb-6">
+                  <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-6 animate-pulse">
+                    <Rocket className="h-10 w-10 text-white" />
+                  </div>
+                  <h2 className="text-3xl font-bold mb-4 bg-gradient-to-r from-blue-500 to-blue-600 bg-clip-text text-transparent">
+                    Creating Advanced Roadmap
+                  </h2>
+                  <p className="text-lg text-muted-foreground leading-relaxed mb-6">
+                    Building upon your achievements to create the next level of challenges...
+                  </p>
+                  
+                  <div className="space-y-4">
+                    <Progress
+                      value={advancedProgress}
+                      max={100}
+                      variant="lumos"
+                      className="w-full"
+                      size="lg"
+                      showPercentage={true}
+                    />
+                    <p className="text-sm text-blue-600 font-medium">
+                      {currentProgressMessage}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                // Original celebration content
+                <div className="mb-6">
+                  <Lottie
+                    loop
+                    play
+                    animationData={trophyAnimation}
+                    style={{
+                      width: '120px',
+                      height: '120px',
+                      margin: '0 auto',
+                      pointerEvents: 'none'
+                    }}
+                  />
+                  <h2 className="text-4xl font-bold mb-4 bg-gradient-to-r from-yellow-500 to-orange-500 bg-clip-text text-transparent">
+                    🎉 Incredible Achievement!
+                  </h2>
+                  <p className="text-lg text-muted-foreground leading-relaxed mb-4">
+                    You've successfully completed your entire learning roadmap:<br />
+                    <strong className="text-foreground text-xl">{roadmapProgress?.title}</strong>
+                  </p>
+                  <div className="flex items-center justify-center gap-4 text-sm text-muted-foreground bg-gray-50 rounded-xl p-4 mb-6">
+                    <div className="flex items-center gap-2">
+                      <Trophy className="h-4 w-4 text-yellow-500" />
+                      <span className="font-medium">{roadmapProgress?.totalModules} modules completed</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-blue-500" />
+                      <span className="font-medium">{roadmapProgress?.totalHours} hours invested</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <Button
+                      onClick={handleCreateAdvancedRoadmap}
+                      disabled={isCreatingAdvancedRoadmap}
+                      className="w-full py-3 text-base font-semibold bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
+                    >
+                      <Rocket className="h-5 w-5 mr-2" />
+                      Create Advanced Roadmap
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowCompletionCelebration(false)}
+                      className="w-full py-3 rounded-full border-2 hover:bg-gray-50"
+                      disabled={isCreatingAdvancedRoadmap}
+                    >
+                      Continue Exploring
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="mb-8">
         <div className="flex justify-between items-start mb-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">
+            <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
               {roadmapProgress?.title || 'Your Learning Roadmap'}
+              {isRoadmapComplete && (
+                <div className="flex items-center gap-1">
+                  <Trophy className="h-6 w-6 text-yellow-500" />
+                  <Sparkles className="h-5 w-5 text-yellow-400" />
+                </div>
+              )}
             </h1>
             <p className="text-muted-foreground mt-2">
               {roadmapProgress?.totalModules} modules • {roadmapProgress?.totalHours} estimated hours
             </p>
           </div>
           <div className="text-right">
-            <div className="text-2xl font-bold text-lumos-primary">
+            <div className={`text-2xl font-bold ${isRoadmapComplete ? 'text-yellow-500' : 'text-lumos-primary'}`}>
               {roadmapProgress?.completedPercentage || 0}%
             </div>
-            <p className="text-sm text-muted-foreground">completed</p>
+            <p className="text-sm text-muted-foreground">
+              {isRoadmapComplete ? 'Complete! 🎉' : 'completed'}
+            </p>
           </div>
         </div>
+        
         <Progress 
           value={roadmapProgress?.completedPercentage || 0} 
-          variant="lumos"
+          variant={isRoadmapComplete ? "success" : "lumos"}
           className="h-3 mb-4"
           size="lg"
         />
-        {/* <Progress value={20} variant="lumos" size="lg" /> */}
+        
         <div className="flex items-center gap-6 text-sm text-muted-foreground">
           <div className="flex items-center gap-2">
             <Target className="h-4 w-4" />
@@ -87,12 +318,52 @@ const RoadmapSection = ({ loading, roadmapProgress, modules }) => {
         </div>
       </div>
 
+      {/* Completion Banner */}
+      {isRoadmapComplete && !showCompletionCelebration && (
+        <Card className="mb-6 bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-200 shadow-lg">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center">
+                  <Trophy className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-yellow-800 flex items-center gap-2">
+                    🎉 Roadmap Complete!
+                    <Sparkles className="h-5 w-5 text-yellow-600" />
+                  </h3>
+                  <p className="text-yellow-700 mt-1">
+                    Amazing work! Ready to take your skills to the next level?
+                  </p>
+                </div>
+              </div>
+              <Button 
+                onClick={handleCreateAdvancedRoadmap}
+                disabled={isCreatingAdvancedRoadmap}
+                className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
+              >
+                {isCreatingAdvancedRoadmap ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <Rocket className="h-4 w-4 mr-2" />
+                    Create Advanced Roadmap
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Timeline */}
       <VerticalTimeline layout="1-column-left" lineColor="#e5e7eb" className="vertical-timeline">
         {modules.map((module, index) => {
           const isDone = module.isCompleted;
           const isHovered = hoveredModule === index;
-          // const isSelected = selectedModule === index;
           const elementClasses = isDone ? "completed" : "";
           const IconComponent = isDone ? CheckCircle2 : Circle;
           const difficultyInfo = getDifficultyIndicator(module.difficulty);
@@ -115,7 +386,6 @@ const RoadmapSection = ({ loading, roadmapProgress, modules }) => {
               iconClassName={isDone ? 'completed-icon' : undefined}
               contentStyle={{ background: 'transparent', boxShadow: 'none', padding: 0 }}
               contentArrowStyle={{ display: 'none' }}
-              // onTimelineElementClick={() => setSelectedModule(index)}
             >
               <Card
                 className={`
@@ -132,7 +402,6 @@ const RoadmapSection = ({ loading, roadmapProgress, modules }) => {
                 `}
                 onMouseEnter={() => setHoveredModule(index)}
                 onMouseLeave={() => setHoveredModule(null)}
-                // onClick={() => setSelectedModule(index)}
               >
                 <CardHeader className="pb-4">
                   <div className="flex items-start justify-between">
@@ -179,7 +448,6 @@ const RoadmapSection = ({ loading, roadmapProgress, modules }) => {
                 </CardHeader>
 
                 <CardContent className="pt-0 space-y-4">
-                  {/* description */}
                   {moduleDescription && (
                     <div className={`rounded-xl p-4 border transition-all duration-200 ${
                       isDone 
@@ -200,7 +468,6 @@ const RoadmapSection = ({ loading, roadmapProgress, modules }) => {
                     </div>
                   )}
 
-                  {/* resources info */}
                   <div className={`flex items-center justify-between text-xs rounded-xl p-3 border transition-all duration-200 ${
                     isDone 
                       ? 'text-gray-500 bg-gray-50/60 border-gray-200/80' 
@@ -222,7 +489,6 @@ const RoadmapSection = ({ loading, roadmapProgress, modules }) => {
                     </div>
                   </div>
 
-                  {/* Action Button */}
                   <Link to={`/module/${module.module_id}`}>
                     {isDone ? (
                       <Button 
@@ -252,7 +518,6 @@ const RoadmapSection = ({ loading, roadmapProgress, modules }) => {
                           <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform duration-200" />
                         </div>
                       </Button>
-
                     )}
                   </Link>
                 </CardContent>
@@ -262,7 +527,6 @@ const RoadmapSection = ({ loading, roadmapProgress, modules }) => {
         })}
       </VerticalTimeline>
 
-      {/* empty state */}
       {(!modules || modules.length === 0) && (
         <Card className="p-8 text-center border-2 border-dashed border-gray-200 rounded-xl">
           <div className="flex flex-col items-center gap-4">

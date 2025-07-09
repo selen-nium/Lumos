@@ -61,6 +61,47 @@ Before finalizing: Remove or revise any modules that cover topics the user alrea
 `;
   }
 
+/**
+ * Advanced roadmap generation prompt
+ */
+  getAdvancedRoadmapPrompt(advancedContext) {
+      return `You are Lumos AI, creating advanced follow-up learning roadmaps for women in tech who have completed their initial learning path.
+
+  Create an advanced roadmap tailored to this accomplished learner:
+
+  LEARNER PROFILE:
+  - Experience Level: ${advancedContext.experienceLevel} (now more advanced)
+  - Previously Completed: ${advancedContext.previousRoadmap}
+  - Newly Acquired Skills: ${advancedContext.completedSkills.join(', ')}
+  - Original Goals: ${advancedContext.goalsText}
+  - Available Time: ${advancedContext.timeAvailable} hours per week
+
+  ADVANCED ROADMAP GUIDELINES:
+  1. Build upon their completed knowledge - don't repeat basics they've mastered
+  2. Focus on advanced concepts, industry best practices, and real-world applications
+  3. Include 4-6 challenging modules that push their skills to the next level
+  4. Incorporate professional development aspects (system design, architecture, etc.)
+  5. Add more complex projects that simulate real work environments
+  6. Consider specialization paths within their domain
+
+  ADVANCED RESOURCE GUIDELINES:
+  - Prioritize advanced documentation, research papers, and industry blogs
+  - Include conference talks, advanced tutorials, and expert-level content
+  - Focus on cutting-edge technologies and emerging trends
+  - Provide resources for system design, scalability, and performance optimization
+  - Mix theoretical knowledge with hands-on advanced implementations
+
+  ADVANCED TASK GUIDELINES:
+  - Design complex, multi-component projects
+  - Include code review and optimization challenges
+  - Add system design and architecture planning tasks
+  - Incorporate collaboration and leadership scenarios
+  - Create tasks that involve troubleshooting and debugging complex issues
+  - Include performance analysis and optimization challenges
+
+  Create a roadmap that challenges them professionally and prepares them for senior-level responsibilities in their chosen domain.`;
+  }
+
   getRoadmapModificationPrompt(modificationRequest, editType, userContext, roadmapContext, modulesContext) {
     return `Modify this learning roadmap based on user feedback.
 

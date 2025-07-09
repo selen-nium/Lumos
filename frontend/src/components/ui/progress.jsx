@@ -34,12 +34,14 @@ const Progress = ({
     },
     success: {
       bg: 'bg-gray-200',
-      fill: 'bg-gradient-to-r from-green-500 to-green-600'
+      fill: 'bg-gradient-to-r from-green-500 to-emerald-500'
     }
   };
   
   const currentVariant = variantClasses[variant] || variantClasses.default;
   const heightClass = sizeClasses[size] || sizeClasses.default;
+  
+  const isComplete = percentage >= 100;
   
   return (
     <div className={`relative ${className}`}>
@@ -47,6 +49,7 @@ const Progress = ({
         className={`
           relative overflow-hidden rounded-full ${currentVariant.bg} ${heightClass}
           transition-all duration-700 ease-out
+          ${isComplete && variant === 'success' ? 'animate-pulse-glow' : ''}
         `}
         role="progressbar"
         aria-valuenow={currentValue}
@@ -57,16 +60,26 @@ const Progress = ({
           className={`
             h-full rounded-full transition-all duration-700 ease-out
             ${currentVariant.fill}
+            ${isComplete ? 'shadow-lg' : ''}
           `}
           style={{ 
             width: `${percentage}%`,
           }}
         />
+        
+        {isComplete && (
+          <div className="absolute inset-0 rounded-full overflow-hidden">
+            <div className="h-full w-1/3 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shine absolute top-0 -skew-x-12" />
+          </div>
+        )}
       </div>
       
       {showPercentage && (
-        <div className="text-xs text-center mt-1 font-medium">
+        <div className={`text-xs text-center mt-1 font-medium ${
+          isComplete && variant === 'success' ? 'text-green-600 font-bold' : ''
+        }`}>
           {percentage.toFixed(1)}%
+          {isComplete && variant === 'success' && ' 🎉'}
         </div>
       )}
     </div>
