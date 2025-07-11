@@ -291,7 +291,7 @@ What would you like to work on today?`,
               </div>
             )}
 
-            {/* Enhanced Suggestions with amber theme */}
+            {/* Suggestions
             {msg.suggestions && msg.suggestions.length > 0 && (
               <div className="mt-3 space-y-2">
                 <div className="text-xs text-gray-500 font-medium">Suggestions:</div>
@@ -309,7 +309,7 @@ What would you like to work on today?`,
                   ))}
                 </div>
               </div>
-            )}
+            )} */}
           </div>
         </div>
       </div>

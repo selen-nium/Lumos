@@ -585,15 +585,15 @@ Experience level: ${userContext.experienceLevel}`;
     try {
       console.log("📝 Generating modification explanation...");
       
-      const explanationPrompt = promptService.getModificationExplanationPrompt(
-        modificationRequest,
-        editType,
-        modifiedRoadmap
-      );
+      // const explanationPrompt = promptService.getModificationExplanationPrompt(
+      //   modificationRequest,
+      //   editType,
+      //   modifiedRoadmap
+      // );
 
       const result = await llmService.generateWithSystemPrompt(
         promptService.getChatEnhancementSystemPrompt(),
-        explanationPrompt,
+        // explanationPrompt,
         {
           temperature: 0.4,
           max_tokens: 500

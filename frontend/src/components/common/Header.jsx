@@ -102,7 +102,7 @@ const Header = () => {
           <div className="flex-shrink-0">
             <Link to="/home" className="flex items-center group">
               <img
-                src="/Lumos/logo5.png"
+                src="/logo5.png"
                 alt="Lumos Logo"
                 className="h-10 transition-transform group-hover:scale-110"
               />

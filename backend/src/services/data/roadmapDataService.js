@@ -201,6 +201,17 @@ class RoadmapDataService {
                 });
                 }
                 
+                // Process resources and tasks for ALL modules (both new and existing)
+                if (moduleData.resources && Array.isArray(moduleData.resources) && moduleData.resources.length > 0) {
+                    console.log(`📚 Processing ${moduleData.resources.length} resources for module ${moduleId}`);
+                    await this.processModuleResources(moduleId, moduleData.resources);
+                }
+                
+                if (moduleData.tasks && Array.isArray(moduleData.tasks) && moduleData.tasks.length > 0) {
+                    console.log(`✏️ Processing ${moduleData.tasks.length} tasks for module ${moduleId}`);
+                    await this.processModuleTasks(moduleId, moduleData.tasks);
+                }
+                
                 console.log(`🔗 Creating NEW active progress entry for module: ${moduleId}`);
                 
                 // Link module to the updated learning path with fresh status
@@ -229,7 +240,6 @@ class RoadmapDataService {
                 
             } catch (moduleError) {
                 console.error(`❌ Error processing module ${i + 1}:`, moduleError);
-                // Continue with other modules instead of failing completely
             }
             }
         }
