@@ -42,7 +42,10 @@ app.use(limiter)
 
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' 
-    ? ['https://yourapp.com'] // production domain to be replaced
+    ? [
+        'https://d1lqgr0mstbfnn.amplifyapp.com',  // Your Amplify URL
+        'https://main.d1lqgr0mstbfnn.amplifyapp.com'  // Alternative Amplify URL
+      ]
     : ['http://localhost:3000'],
   credentials: true,
   optionsSuccessStatus: 200
