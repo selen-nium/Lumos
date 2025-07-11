@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import Layout from '../../components/common/Layout';
-import RoadmapSection from '../../components/dashboard/RoadmapSection';
-import ChatInterface from '../../components/dashboard/ChatInterface';
+import RoadmapSection from '../../components/dashboard/roadmapSection';
+import ChatInterface from '../../components/dashboard/chatInterface';
 import MentorHomePage from './MentorHomePage';
 import { GripVertical } from 'lucide-react';
 

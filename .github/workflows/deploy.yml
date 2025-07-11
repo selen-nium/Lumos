@@ -1,0 +1,51 @@
+name: Test and Deploy to AWS
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+
+    - name: Test backend
+      working-directory: ./backend
+      run: |
+        npm ci
+        npm test
+
+    - name: Test frontend build
+      working-directory: ./frontend
+      run: |
+        npm ci
+        npm run build
+
+    - name: Test Docker builds
+      run: |
+        echo "🐳 Testing Docker builds..."
+        docker build -t test-backend ./backend
+        docker build -t test-frontend ./frontend
+        echo "✅ Docker builds successful!"
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Deployment ready
+      run: |
+        echo "🚀 All tests passed!"
+        echo "📋 Ready for AWS App Runner deployment"
+        echo "✅ Your CI/CD pipeline is working!"

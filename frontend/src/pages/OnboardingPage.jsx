@@ -7,11 +7,11 @@ import { Button } from '@/components/ui/button';
 import Progress from '@/components/ui/progress';
 import { AlertCircle, Loader2, ChevronLeft, ChevronRight, CheckCircle, User, Zap, Briefcase, Target, CheckCircle as CheckIcon } from 'lucide-react';
 import Logo from '../components/common/Logo';
-import Step1Profile from '../components/onboarding/Step1Profile';
-import Step2Career from '../components/onboarding/Step2Career';
-import Step3Skills from '../components/onboarding/Step3Skills';
-import Step4Goals from '../components/onboarding/Step4Goals';
-import Step5Review from '../components/onboarding/Step5Review';
+import Step1Profile from '../components/onboarding/step1Profile';
+import Step2Career from '../components/onboarding/step2Career';
+import Step3Skills from '../components/onboarding/step3Skills';
+import Step4Goals from '../components/onboarding/step4Goals';
+import Step5Review from '../components/onboarding/step5Review';
 
 const OnboardingPage = () => {
   const [isLoading, setIsLoading] = useState(false);

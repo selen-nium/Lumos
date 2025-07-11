@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend              # Points to backend/Dockerfile
+    ports:
+      - "5001:5001"              # Map port 3001
+    environment:
+      - NODE_ENV=development
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+
+  frontend:
+    build: ./frontend             # Points to frontend/Dockerfile
+    ports:
+      - "3000:3000"              # Map port 3000
+    depends_on:
+      - backend                   # Start backend first
