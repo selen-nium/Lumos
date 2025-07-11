@@ -40,6 +40,8 @@ const limiter = rateLimit({
 
 app.use(limiter)
 
+// Replace your CORS section with this debug version:
+
 const allowedOrigins = process.env.NODE_ENV === 'production' 
   ? [
       process.env.FRONTEND_URL,
@@ -48,11 +50,31 @@ const allowedOrigins = process.env.NODE_ENV === 'production'
     ].filter(Boolean)
   : ['http://localhost:3000'];
 
+// 🔍 Debug logging
+console.log('🌍 NODE_ENV:', process.env.NODE_ENV);
+console.log('🌍 FRONTEND_URL:', process.env.FRONTEND_URL);
+console.log('🌍 Allowed Origins:', allowedOrigins);
+
 app.use(cors({
-  origin: allowedOrigins,
+  origin: function (origin, callback) {
+    // 🔍 Debug each request
+    console.log('🔍 CORS Check - Origin:', origin);
+    console.log('🔍 CORS Check - Allowed:', allowedOrigins);
+    
+    // Allow requests with no origin (mobile apps, Postman, etc.)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      console.log('✅ CORS: Origin allowed');
+      callback(null, true);
+    } else {
+      console.log('❌ CORS: Origin blocked');
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   optionsSuccessStatus: 200
 }));
 
