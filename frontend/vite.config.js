@@ -7,7 +7,7 @@ import path from 'path';
 export default defineConfig({
   plugins: [
     react(),
-    // tailwindcss(),
+    tailwindcss(),
   ],
   resolve: {
     alias: {
@@ -21,9 +21,9 @@ export default defineConfig({
       '@utils': path.resolve(__dirname, './src/utils')
     }
   },
-  css: {
-    postcss: './postcss.config.js'
-  },
+  // css: {
+  //   postcss: './postcss.config.js'
+  // },
   server: {
     port: 3000,
     open: true
