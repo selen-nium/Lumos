@@ -40,14 +40,19 @@ const limiter = rateLimit({
 
 app.use(limiter)
 
+const allowedOrigins = process.env.NODE_ENV === 'production' 
+  ? [
+      process.env.FRONTEND_URL,
+      'https://main.d1emks5zm4lmih.amplifyapp.com',
+      'https://d1emks5zm4lmih.amplifyapp.com'
+    ].filter(Boolean)
+  : ['http://localhost:3000'];
+
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? [
-        'https://d1lqgr0mstbfnn.amplifyapp.com',  // Your Amplify URL
-        'https://main.d1lqgr0mstbfnn.amplifyapp.com'  // Alternative Amplify URL
-      ]
-    : ['http://localhost:3000'],
+  origin: allowedOrigins,
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
   optionsSuccessStatus: 200
 }));
 
