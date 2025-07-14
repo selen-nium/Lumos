@@ -32,16 +32,16 @@ const ITEMS_PER_PAGE = 6;
 
 // Array of stock pictures for study groups
 const GROUP_PICTURES = [
-  '/Lumos/groupPictures/g1.jpg',
-  '/Lumos/groupPictures/g2.jpg',
-  '/Lumos/groupPictures/g3.jpg',
-  '/Lumos/groupPictures/g4.jpg',
-  '/Lumos/groupPictures/g5.jpg',
-  '/Lumos/groupPictures/g6.jpg',
-  '/Lumos/groupPictures/g7.jpg',
-  '/Lumos/groupPictures/g8.jpg',
-  '/Lumos/groupPictures/g9.jpg',
-  '/Lumos/groupPictures/g10.jpg'
+  '/groupPictures/g1.jpg',
+  '/groupPictures/g2.jpg',
+  '/groupPictures/g3.jpg',
+  '/groupPictures/g4.jpg',
+  '/groupPictures/g5.jpg',
+  '/groupPictures/g6.jpg',
+  '/groupPictures/g7.jpg',
+  '/groupPictures/g8.jpg',
+  '/groupPictures/g9.jpg',
+  '/groupPictures/g10.jpg'
 ];
 
 const StudyGroupsPage = () => {
