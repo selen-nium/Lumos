@@ -77,20 +77,17 @@ const StudyGroupsPage = () => {
     setCurrentPage(1);
   }, [searchQuery]);
 
-  const getGroupPicture = (groupId) => {
-    return '/groupPictures/g1.jpg';
-  };
-
-  // Or use a simple rotation without complex hashing
   // const getGroupPicture = (groupId) => {
-  //   if (!groupId) return '/groupPictures/g1.jpg';
-    
-  //   // Simple rotation based on the last digit of the ID
-  //   const lastDigit = String(groupId).slice(-1);
-  //   const pictureNumber = (parseInt(lastDigit) % 10) + 1;
-    
-  //   return `/groupPictures/g${pictureNumber}.jpg`;
+  //   return '/groupPictures/g1.jpg';
   // };
+
+  const getGroupPictureSimple = (groupId) => {
+    if (!groupId) return GROUP_PICTURES[0];
+    
+    // Simple modulo approach
+    const index = Math.abs(Number(groupId)) % GROUP_PICTURES.length;
+    return GROUP_PICTURES[index];
+  };
 
   const fetchStudyGroups = async () => {
     try {
