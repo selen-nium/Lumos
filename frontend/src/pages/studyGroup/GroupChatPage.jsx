@@ -65,10 +65,8 @@ const GroupChatPage = () => {
   useEffect(() => {
     if (!groupId) return;
 
-    console.log('Setting up real-time subscription for group:', groupId);
-
     const subscription = supabase
-      .channel(`messages:${groupId}`)
+      .channel(`group_messages:${groupId}`)
       .on('postgres_changes', 
         { 
           event: 'INSERT', 
@@ -76,17 +74,17 @@ const GroupChatPage = () => {
           table: 'messages',
           filter: `group_id=eq.${groupId}`
         }, 
-        (payload) => {
-          console.log('New message received:', payload);
+        async (payload) => {
+          console.log('New group message received:', payload);
+
           setMessages(prev => [...prev, payload.new]);
-          fetchMessageWithProfile(payload.new.message_id);
+          
+          await fetchMessageWithProfile(payload.new.message_id);
         }
       )
       .subscribe();
 
-    return () => {
-      subscription.unsubscribe();
-    };
+    return () => subscription.unsubscribe();
   }, [groupId]);
 
   // Real-time goals subscription
@@ -169,42 +167,54 @@ const GroupChatPage = () => {
 
   const fetchMessages = async () => {
     try {
-      console.log('Fetching messages for group:', groupId);
-      
-      const { data, error } = await supabase
+      // Get all messages
+      const { data: messagesData, error: messagesError } = await supabase
         .from('messages')
-        .select(`
-          *,
-          profiles:sender_id (
-            id,
-            username,
-            role,
-            company,
-            profile_picture_url
-          )
-        `)
+        .select('*')
         .eq('group_id', groupId)
         .order('sent_at', { ascending: true });
 
-      if (error) {
-        console.error('Error fetching messages:', error);
-        
-        if (error.code === '42703') {
-          console.error('Database schema error: group_id column missing in messages table');
-          alert('Database configuration error. Please contact administrator.');
-          return;
-        }
-        
-        throw error;
+      if (messagesError) throw messagesError;
+
+      if (!messagesData || messagesData.length === 0) {
+        setMessages([]);
+        return;
       }
 
-      console.log('Fetched messages:', data);
-      setMessages(data || []);
+      // Get unique sender IDs
+      const senderIds = [...new Set(messagesData.map(msg => msg.sender_id))];
+
+      // Get all profiles for these senders (only for users with profiles)
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, username, role, company, profile_picture_url')
+        .in('id', senderIds);
+
+      if (profilesError) {
+        console.warn('Could not fetch some profiles:', profilesError);
+      }
+
+      // Create profile lookup map
+      const profileMap = {};
+      if (profilesData) {
+        profilesData.forEach(profile => {
+          profileMap[profile.id] = profile;
+        });
+      }
+
+      // Combine messages with profiles (null for missing profiles)
+      const messagesWithProfiles = messagesData.map(message => ({
+        ...message,
+        profiles: profileMap[message.sender_id] || null
+      }));
+
+      setMessages(messagesWithProfiles);
       
     } catch (error) {
       console.error('Error fetching messages:', error);
     }
   };
+
   useEffect(() => {
     if (!groupId) return;
 
@@ -257,12 +267,12 @@ const GroupChatPage = () => {
         .single();
 
       if (error) {
-        console.error('Error fetching message profile:', error);
+        console.warn('Could not fetch profile for message:', error);
         return;
       }
       
       if (data) {
-        // Update the message in state with profile data
+        // Update the message in state with profile data (or null if no profile)
         setMessages(prev => 
           prev.map(msg => 
             msg.message_id === messageId 
@@ -531,9 +541,19 @@ const GroupChatPage = () => {
     return date.toLocaleDateString();
   };
 
-  const getInitials = (name) => {
-    if (!name) return '??';
-    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  const getInitials = (name, fallbackId) => {
+    // If we have a name, use it
+    if (name && typeof name === 'string' && name.trim()) {
+      return name.trim().split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+    }
+    
+    // Fallback: Use first 2 characters of user ID for test users
+    if (fallbackId && typeof fallbackId === 'string') {
+      return fallbackId.slice(0, 2).toUpperCase();
+    }
+    
+    // Last resort
+    return '??';
   };
 
   const getUserRole = (userId) => {
@@ -722,42 +742,42 @@ const GroupChatPage = () => {
                 </CardHeader>
                 
                 <CardContent className="">
-                  {members.map((member) => (
-                    <div key={member.user_id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-muted/20 transition-colors">
-                      <div className="relative">
-                        <Avatar className="w-10 h-10 ring-2 ring-white shadow-md">
-                          <AvatarFallback className={`text-white font-bold ${
-                            member.role === 'mentor' 
-                              ? 'bg-gradient-to-br from-yellow-500 to-orange-500' 
-                              : 'bg-gradient-to-br from-blue-500 to-blue-600'
-                          }`}>
-                            {getInitials(member.profiles?.username)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
-                      </div>
-                      
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold truncate">
-                          {member.profiles?.username}
-                          {member.user_id === user.id && (
-                            <span className="text-lumos-primary ml-1">(You)</span>
-                          )}
-                        </p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Badge className={`text-xs ${getRoleBadgeStyle(member.role)}`}>
-                            {getRoleIcon(member.role)}
-                            <span className="ml-1">{member.role}</span>
-                          </Badge>
-                          {member.profiles?.company && (
-                            <span className="text-xs text-muted-foreground truncate">
-                              {member.profiles.company}
-                            </span>
-                          )}
-                        </div>
+                {members.map((member) => (
+                  <div key={member.user_id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-muted/20 transition-colors">
+                    <div className="relative">
+                      <Avatar className="w-10 h-10 ring-2 ring-white shadow-md">
+                        <AvatarFallback className={`text-white font-bold ${
+                          member.role === 'mentor' 
+                            ? 'bg-gradient-to-br from-yellow-500 to-orange-500' 
+                            : 'bg-gradient-to-br from-blue-500 to-blue-600'
+                        }`}>
+                          {getInitials(member.profiles?.username, member.user_id)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold truncate">
+                        {member.profiles?.username || 'Anonymous User'}
+                        {member.user_id === user.id && (
+                          <span className="text-lumos-primary ml-1">(You)</span>
+                        )}
+                      </p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge className={`text-xs ${getRoleBadgeStyle(member.role)}`}>
+                          {getRoleIcon(member.role)}
+                          <span className="ml-1">{member.role}</span>
+                        </Badge>
+                        {member.profiles?.company && (
+                          <span className="text-xs text-muted-foreground truncate">
+                            {member.profiles.company}
+                          </span>
+                        )}
                       </div>
                     </div>
-                  ))}
+                  </div>
+                ))}
                 </CardContent>
               </Card>
 

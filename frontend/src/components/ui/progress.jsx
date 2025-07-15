@@ -78,7 +78,7 @@ const Progress = ({
         <div className={`text-xs text-center mt-1 font-medium ${
           isComplete && variant === 'success' ? 'text-green-600 font-bold' : ''
         }`}>
-          {percentage.toFixed(1)}%
+          {Math.round(percentage)}%
           {isComplete && variant === 'success' && ' 🎉'}
         </div>
       )}

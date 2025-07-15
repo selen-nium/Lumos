@@ -90,9 +90,19 @@ const Step2Career = ({ formik }) => {
               onValueChange={(value) => formik.setFieldValue('userType', value)}
               className="grid grid-cols-1 md:grid-cols-3 gap-4"
             >
-              <label className="flex flex-col items-center p-6 border border-border rounded-xl cursor-pointer hover:bg-lumos-primary-light/20 transition-colors group">
+              <label 
+                className={`flex flex-col items-center p-6 rounded-xl cursor-pointer transition-all duration-200 group ${
+                  formik.values.userType === 'mentee'
+                    ? 'border-2 border-lumos-primary bg-lumos-primary/10 shadow-lg transform scale-[1.02]'
+                    : 'border border-border hover:bg-lumos-primary-light/20 hover:border-lumos-primary/50 hover:shadow-md'
+                }`}
+              >
                 <RadioGroupItem value="mentee" id="mentee" className="mb-4" />
-                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-3 group-hover:bg-green-200 transition-colors">
+                <div className={`w-12 h-12 rounded-lg flex items-center justify-center mb-3 transition-colors ${
+                  formik.values.userType === 'mentee'
+                    ? 'bg-green-200'
+                    : 'bg-green-100 group-hover:bg-green-200'
+                }`}>
                   <Users className="w-6 h-6 text-green-600" />
                 </div>
                 <div className="text-center">
@@ -100,9 +110,20 @@ const Step2Career = ({ formik }) => {
                   <div className="text-sm text-muted-foreground mt-1">Learn new skills</div>
                 </div>
               </label>
-              <label className="flex flex-col items-center p-6 border border-border rounded-xl cursor-pointer hover:bg-lumos-primary-light/20 transition-colors group">
+
+              <label 
+                className={`flex flex-col items-center p-6 rounded-xl cursor-pointer transition-all duration-200 group ${
+                  formik.values.userType === 'mentor'
+                    ? 'border-2 border-lumos-primary bg-lumos-primary/10 shadow-lg transform scale-[1.02]'
+                    : 'border border-border hover:bg-lumos-primary-light/20 hover:border-lumos-primary/50 hover:shadow-md'
+                }`}
+              >
                 <RadioGroupItem value="mentor" id="mentor" className="mb-4" />
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-3 group-hover:bg-blue-200 transition-colors">
+                <div className={`w-12 h-12 rounded-lg flex items-center justify-center mb-3 transition-colors ${
+                  formik.values.userType === 'mentor'
+                    ? 'bg-blue-200'
+                    : 'bg-blue-100 group-hover:bg-blue-200'
+                }`}>
                   <Users className="w-6 h-6 text-blue-600" />
                 </div>
                 <div className="text-center">
@@ -110,9 +131,20 @@ const Step2Career = ({ formik }) => {
                   <div className="text-sm text-muted-foreground mt-1">Help mentees in the community</div>
                 </div>
               </label>
-              <label className="flex flex-col items-center p-6 border border-border rounded-xl cursor-pointer hover:bg-lumos-primary-light/20 transition-colors group">
+
+              <label 
+                className={`flex flex-col items-center p-6 rounded-xl cursor-pointer transition-all duration-200 group ${
+                  formik.values.userType === 'both'
+                    ? 'border-2 border-lumos-primary bg-lumos-primary/10 shadow-lg transform scale-[1.02]'
+                    : 'border border-border hover:bg-lumos-primary-light/20 hover:border-lumos-primary/50 hover:shadow-md'
+                }`}
+              >
                 <RadioGroupItem value="both" id="both" className="mb-4" />
-                <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mb-3 group-hover:bg-purple-200 transition-colors">
+                <div className={`w-12 h-12 rounded-lg flex items-center justify-center mb-3 transition-colors ${
+                  formik.values.userType === 'both'
+                    ? 'bg-purple-200'
+                    : 'bg-purple-100 group-hover:bg-purple-200'
+                }`}>
                   <Users className="w-6 h-6 text-purple-600" />
                 </div>
                 <div className="text-center">

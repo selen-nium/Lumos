@@ -314,15 +314,6 @@ What would you like to work on today?`,
                 : 'bg-white text-gray-800 border-gray-200 shadow-gray-100 hover:shadow-md'
           }`}>
             
-            {/* Message tail*/}
-            <div className={`absolute top-3 w-3 h-3 transform rotate-45 ${
-              isUser 
-                ? 'right-[-6px] bg-gradient-to-br from-blue-500 to-blue-600 border-r border-b border-blue-600' 
-                : isError
-                  ? 'left-[-6px] bg-red-50 border-l border-t border-red-200'
-                  : 'left-[-6px] bg-white border-l border-t border-gray-200'
-            }`}/>
-            
             <div className="prose prose-sm break-words relative z-10">
               {msg.content && <ReactMarkdown>{msg.content}</ReactMarkdown>}
             </div>

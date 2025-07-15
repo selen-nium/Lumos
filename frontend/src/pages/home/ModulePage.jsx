@@ -571,14 +571,14 @@ const ModulePage = () => {
               </div>
             </div>
             
-            <div className="flex flex-col items-end gap-4 lg:min-w-[200px]">
+            {/* <div className="flex flex-col items-end gap-4 lg:min-w-[200px]">
               <div className="text-right">
                 <div className="text-5xl font-bold text-lumos-primary">
                   {progress}%
                 </div>
                 <p className="text-lg text-muted-foreground font-medium">completed</p>
               </div>
-            </div>
+            </div> */}
           </div>
         </div>
 

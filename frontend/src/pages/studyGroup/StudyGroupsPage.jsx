@@ -25,7 +25,11 @@ import {
   ChevronRight,
   Sparkles,
   BookOpen,
-  TrendingUp
+  TrendingUp,
+  CheckCircle2,
+  AlertCircle,
+  Trophy,
+  Heart
 } from 'lucide-react';
 
 const ITEMS_PER_PAGE = 6;
@@ -53,6 +57,15 @@ const StudyGroupsPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [showJoinDialog, setShowJoinDialog] = useState(false);
+  const [joinDialogState, setJoinDialogState] = useState({
+    type: 'loading', // 'loading', 'success', 'error', 'confirm'
+    title: '',
+    message: '',
+    groupName: '',
+    role: '',
+    groupId: null
+  });
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -78,16 +91,11 @@ const StudyGroupsPage = () => {
   }, [searchQuery]);
 
   const getGroupPicture = (groupId) => {
-    // 1) Turn the ID into a string
     const str = String(groupId);
-
-    // 2) Simple string hash (djb2 variant)
     let hash = 5381;
     for (let i = 0; i < str.length; i++) {
       hash = (hash * 33) ^ str.charCodeAt(i);
     }
-
-    // 3) Make sure it’s positive, then mod by your pictures array length
     const index = Math.abs(hash) % GROUP_PICTURES.length;
     return GROUP_PICTURES[index];
   };
@@ -215,9 +223,23 @@ const StudyGroupsPage = () => {
     }
   };
 
+  // ENHANCED JOIN GROUP FUNCTION WITH DIALOG
   const joinGroup = async (groupId) => {
+    const group = studyGroups.find(g => g.group_id === groupId);
+    
+    // Show join dialog with loading state
+    setJoinDialogState({
+      type: 'loading',
+      title: 'Joining Group...',
+      message: 'Please wait while we add you to the study group.',
+      groupName: group?.group_name || '',
+      role: '',
+      groupId: groupId
+    });
+    setShowJoinDialog(true);
+
     try {
-      // get the user's profile to determine their role
+      // Get the user's profile to determine their role
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('user_type')
@@ -247,22 +269,45 @@ const StudyGroupsPage = () => {
 
       if (error) {
         if (error.code === '23505') {
-          alert('You are already a member of this group');
+          // Already a member
+          setJoinDialogState({
+            type: 'error',
+            title: 'Already a Member',
+            message: `You're already part of "${group?.group_name}". Check your "My Groups" tab to access it!`,
+            groupName: group?.group_name || '',
+            role: '',
+            groupId: groupId
+          });
         } else {
           throw error;
         }
         return;
       }
 
+      // Success!
+      setJoinDialogState({
+        type: 'success',
+        title: 'Welcome to the Group! 🎉',
+        message: `You've successfully joined "${group?.group_name}" as a ${groupRole}. Start collaborating with your new learning community!`,
+        groupName: group?.group_name || '',
+        role: groupRole,
+        groupId: groupId
+      });
+
       // Refresh data
       await fetchStudyGroups();
       await fetchMyGroups();
       
-      alert(`Successfully joined the study group as a ${groupRole}!`);
-      
     } catch (error) {
       console.error('Error joining group:', error);
-      alert('Failed to join group. Please try again.');
+      setJoinDialogState({
+        type: 'error',
+        title: 'Failed to Join Group',
+        message: 'Something went wrong while joining the group. Please try again later.',
+        groupName: group?.group_name || '',
+        role: '',
+        groupId: groupId
+      });
     }
   };
 
@@ -354,6 +399,130 @@ const StudyGroupsPage = () => {
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
+    );
+  };
+
+  // JOIN GROUP DIALOG COMPONENT
+  const JoinGroupDialog = () => {
+    const getDialogIcon = () => {
+      switch (joinDialogState.type) {
+        case 'loading':
+          return <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-lumos-primary"></div>;
+        case 'success':
+          return <CheckCircle2 className="h-6 w-6 text-green-600" />;
+        case 'error':
+          return <AlertCircle className="h-6 w-6 text-red-600" />;
+        default:
+          return <Users className="h-6 w-6 text-lumos-primary" />;
+      }
+    };
+
+    const getDialogActions = () => {
+      switch (joinDialogState.type) {
+        case 'loading':
+          return null;
+        case 'success':
+          return (
+            <div className="flex gap-3">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowJoinDialog(false)}
+                className="btn-outline-rounded flex-1"
+              >
+                Close
+              </Button>
+              <Button 
+                onClick={() => {
+                  navigate(`/study-groups/${joinDialogState.groupId}`);
+                  setShowJoinDialog(false);
+                }}
+                className="btn-primary-rounded flex-1"
+              >
+                <MessageCircle className="h-4 w-4 mr-2" />
+                Open Chat
+              </Button>
+            </div>
+          );
+        case 'error':
+          return (
+            <div className="flex gap-3">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowJoinDialog(false)}
+                className="btn-outline-rounded flex-1"
+              >
+                Close
+              </Button>
+              <Button 
+                onClick={() => joinGroup(joinDialogState.groupId)}
+                className="btn-primary-rounded flex-1"
+              >
+                Try Again
+              </Button>
+            </div>
+          );
+        default:
+          return (
+            <Button 
+              onClick={() => setShowJoinDialog(false)}
+              className="btn-primary-rounded w-full"
+            >
+              Close
+            </Button>
+          );
+      }
+    };
+
+    return (
+      <Dialog open={showJoinDialog} onOpenChange={setShowJoinDialog}>
+        <DialogContent className="sm:max-w-md bg-white">
+          <DialogHeader>
+            <DialogTitle className="text-xl flex items-center gap-3">
+              {getDialogIcon()}
+              {joinDialogState.title}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <p className="text-muted-foreground leading-relaxed">
+              {joinDialogState.message}
+            </p>
+            
+            {joinDialogState.type === 'success' && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 text-green-800 mb-2">
+                  <Trophy className="h-4 w-4" />
+                  <span className="font-medium">Your Role: {joinDialogState.role}</span>
+                </div>
+                <p className="text-green-700 text-sm">
+                  {joinDialogState.role === 'mentor' 
+                    ? 'As a mentor, you can guide and support other learners in the group.'
+                    : 'As a mentee, you can learn from mentors and collaborate with peers.'
+                  }
+                </p>
+              </div>
+            )}
+            
+            {joinDialogState.type === 'error' && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 text-red-800 mb-2">
+                  <AlertCircle className="h-4 w-4" />
+                  <span className="font-medium">Need Help?</span>
+                </div>
+                <p className="text-red-700 text-sm">
+                  If this problem persists, try refreshing the page or contact support.
+                </p>
+              </div>
+            )}
+          </div>
+          
+          {getDialogActions() && (
+            <div className="flex justify-end pt-4">
+              {getDialogActions()}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     );
   };
 
@@ -476,6 +645,9 @@ const StudyGroupsPage = () => {
             </Dialog>
           </div>
 
+          {/* JOIN GROUP DIALOG */}
+          <JoinGroupDialog />
+
           <Tabs defaultValue="discover" className="w-full">
             <div className="flex justify-center mb-8">
               <TabsList className="bg-white/80 backdrop-blur-sm border border-lumos-primary/20">
@@ -514,7 +686,6 @@ const StudyGroupsPage = () => {
                             alt={group.group_name}
                             className="w-full h-full scale-110 -translate-y-3 group-hover:scale-115 transition-transform duration-300"
                             onError={(e) => {
-                              // Fallback to a gradient background if image fails to load
                               e.target.style.display = 'none';
                               e.target.nextSibling.style.display = 'flex';
                             }}

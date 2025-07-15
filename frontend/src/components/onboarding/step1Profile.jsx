@@ -14,6 +14,7 @@ const Step1Profile = ({ formik }) => (
     </div>
 
     <div className="space-y-6">
+      {/* Username field */}
       <div className="space-y-3">
         <Label htmlFor="username" className="text-base font-medium text-foreground">
           Choose your username
@@ -35,6 +36,7 @@ const Step1Profile = ({ formik }) => (
         )}
       </div>
 
+      {/* Employment Status - ENHANCED with selected state styling */}
       <div className="space-y-4">
         <Label className="text-base font-medium text-foreground">
           Are you currently employed?
@@ -44,10 +46,21 @@ const Step1Profile = ({ formik }) => (
           onValueChange={(value) => formik.setFieldValue('isEmployed', value)}
           className="grid grid-cols-1 md:grid-cols-2 gap-4"
         >
-          <label className="flex items-center p-4 border border-border rounded-xl cursor-pointer hover:bg-lumos-primary-light/20 transition-colors group">
+          {/* Yes, I'm employed */}
+          <label 
+            className={`flex items-center p-4 rounded-xl cursor-pointer transition-all duration-200 group ${
+              formik.values.isEmployed === 'yes'
+                ? 'border-2 border-lumos-primary bg-lumos-primary/10 shadow-md' // Selected state
+                : 'border border-border hover:bg-lumos-primary-light/20 hover:border-lumos-primary/50' // Unselected state
+            }`}
+          >
             <RadioGroupItem value="yes" id="employed-yes" className="mr-3" />
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center group-hover:bg-green-200 transition-colors">
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
+                formik.values.isEmployed === 'yes'
+                  ? 'bg-green-200' // Selected state
+                  : 'bg-green-100 group-hover:bg-green-200' // Unselected state
+              }`}>
                 <UserCheck className="w-5 h-5 text-green-600" />
               </div>
               <div>
@@ -56,11 +69,22 @@ const Step1Profile = ({ formik }) => (
               </div>
             </div>
           </label>
-          
-          <label className="flex items-center p-4 border border-border rounded-xl cursor-pointer hover:bg-lumos-primary-light/20 transition-colors group">
+
+          {/* No, I'm not employed */}
+          <label 
+            className={`flex items-center p-4 rounded-xl cursor-pointer transition-all duration-200 group ${
+              formik.values.isEmployed === 'no'
+                ? 'border-2 border-lumos-primary bg-lumos-primary/10 shadow-md' // Selected state
+                : 'border border-border hover:bg-lumos-primary-light/20 hover:border-lumos-primary/50' // Unselected state
+            }`}
+          >
             <RadioGroupItem value="no" id="employed-no" className="mr-3" />
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center group-hover:bg-blue-200 transition-colors">
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
+                formik.values.isEmployed === 'no'
+                  ? 'bg-blue-200' // Selected state
+                  : 'bg-blue-100 group-hover:bg-blue-200' // Unselected state
+              }`}>
                 <Users className="w-5 h-5 text-blue-600" />
               </div>
               <div>
