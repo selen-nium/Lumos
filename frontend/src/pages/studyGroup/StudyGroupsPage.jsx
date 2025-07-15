@@ -28,21 +28,21 @@ import {
   TrendingUp
 } from 'lucide-react';
 
+import g1 from '/groupPictures/g1.jpg';
+import g2 from '/groupPictures/g2.jpg';
+import g3 from '/groupPictures/g3.jpg';
+import g4 from '/groupPictures/g4.jpg';
+import g5 from '/groupPictures/g5.jpg';
+import g6 from '/groupPictures/g6.jpg';
+import g7 from '/groupPictures/g7.jpg';
+import g8 from '/groupPictures/g8.jpg';
+import g9 from '/groupPictures/g9.jpg';
+import g10 from '/groupPictures/g10.jpg';
+
 const ITEMS_PER_PAGE = 6;
 
 // Array of stock pictures for study groups
-const GROUP_PICTURES = [
-  '/groupPictures/g1.jpg',
-  '/groupPictures/g2.jpg',
-  '/groupPictures/g3.jpg',
-  '/groupPictures/g4.jpg',
-  '/groupPictures/g5.jpg',
-  '/groupPictures/g6.jpg',
-  '/groupPictures/g7.jpg',
-  '/groupPictures/g8.jpg',
-  '/groupPictures/g9.jpg',
-  '/groupPictures/g10.jpg'
-];
+const GROUP_PICTURES = [g1, g2, g3, g4, g5, g6, g7, g8, g9, g10];
 
 const StudyGroupsPage = () => {
   const { user } = useAuth();
