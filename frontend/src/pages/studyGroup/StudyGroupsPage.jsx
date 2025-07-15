@@ -77,20 +77,19 @@ const StudyGroupsPage = () => {
     setCurrentPage(1);
   }, [searchQuery]);
 
-  // const getGroupPicture = (groupId) => {
-  //   return '/groupPictures/g1.jpg';
-  // };
-
   const getGroupPicture = (groupId) => {
-    if (!groupId) return GROUP_PICTURES[0];
-    
-    const index = Math.abs(Number(groupId)) % GROUP_PICTURES.length;
-    const selectedPicture = GROUP_PICTURES[index];
-    
-    // Add debugging
-    console.log('🖼️ Group ID:', groupId, 'Selected picture:', selectedPicture);
-    
-    return selectedPicture;
+    // 1) Turn the ID into a string
+    const str = String(groupId);
+
+    // 2) Simple string hash (djb2 variant)
+    let hash = 5381;
+    for (let i = 0; i < str.length; i++) {
+      hash = (hash * 33) ^ str.charCodeAt(i);
+    }
+
+    // 3) Make sure it’s positive, then mod by your pictures array length
+    const index = Math.abs(hash) % GROUP_PICTURES.length;
+    return GROUP_PICTURES[index];
   };
 
   const fetchStudyGroups = async () => {
@@ -514,15 +513,7 @@ const StudyGroupsPage = () => {
                             src={group.picture}
                             alt={group.group_name}
                             className="w-full h-full scale-110 -translate-y-3 group-hover:scale-115 transition-transform duration-300"
-                            onLoad={(e) => {
-                              console.log('✅ Image loaded successfully:', e.target.src);
-                            }}
                             onError={(e) => {
-                              console.error('❌ Image failed to load:', e.target.src);
-                              // Log more debugging info
-                              console.log('🔍 Current window location:', window.location.href);
-                              console.log('🔍 Full image URL:', new URL(e.target.src, window.location.href).href);
-                              
                               // Fallback to a gradient background if image fails to load
                               e.target.style.display = 'none';
                               e.target.nextSibling.style.display = 'flex';
