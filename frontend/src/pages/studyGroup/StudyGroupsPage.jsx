@@ -78,16 +78,18 @@ const StudyGroupsPage = () => {
   }, [searchQuery]);
 
   const getGroupPicture = (groupId) => {
-    // 1) Turn the ID into a string
-    const str = String(groupId);
-
-    // 2) Simple string hash (djb2 variant)
-    let hash = 5381;
+    // Convert to string and create a simple hash
+    const str = String(groupId || '1');
+    
+    // Simpler hash function that's more build-friendly
+    let hash = 0;
     for (let i = 0; i < str.length; i++) {
-      hash = (hash * 33) ^ str.charCodeAt(i);
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
     }
-
-    // 3) Make sure it’s positive, then mod by your pictures array length
+    
+    // Get absolute value and mod by array length
     const index = Math.abs(hash) % GROUP_PICTURES.length;
     return GROUP_PICTURES[index];
   };
