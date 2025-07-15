@@ -77,10 +77,16 @@ What would you like to work on today?`,
 
   // Generate context for the AI assistant
   const generateChatContext = () => {
+    if (!user?.id) {
+      console.error('Missing user context');
+      return null;
+    }
+
     const context = {
       user: {
         email: user?.email,
-        id: user?.id
+        id: user?.id,
+        username: user?.username
       },
       roadmap: roadmapProgress ? {
         title: roadmapProgress.title,
@@ -102,6 +108,7 @@ What would you like to work on today?`,
     
     return context;
   };
+
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
@@ -128,10 +135,17 @@ What would you like to work on today?`,
         setIsModifying(true);
       }
 
+      console.log('Sending message to backend:', {
+        message: currentMessage,
+        context: generateChatContext(),
+        chatHistory: chatHistory.slice(-5)
+      });
+
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/chat/message`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
         },
         body: JSON.stringify({
           message: currentMessage,
@@ -140,44 +154,92 @@ What would you like to work on today?`,
         })
       });
 
+      console.log('Response status:', response.status);
+      
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        let errorMessage = 'Failed to get response from chatbot';
+        
+        try {
+          const errorData = await response.json();
+          console.error('Backend error response:', errorData);
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch (parseError) {
+          console.error('Could not parse error response:', parseError);
+          errorMessage = `Server error (${response.status})`;
+        }
+        
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
-      
-      if (data.success) {
-        const { response, suggestions, context:newContext } = data;
-        const assistantMessage = {
-          role: 'assistant',
-          content: response,
-          timestamp: new Date().toISOString(),
-          suggestions: data.suggestions || [],
-          roadmapUpdated: data.roadmapUpdated || false,
-          updateDetails: data.updateDetails || null
-        };
-        
-        setChatHistory(prev => [...prev, assistantMessage]);
+      console.log('Successfully received response:', data);
 
-        // If roadmap was updated, trigger refresh
-        if (data.roadmapUpdated && onRoadmapUpdate) {
-          console.log("🔄 Roadmap was updated, triggering refresh...");
-          setTimeout(() => {
-            onRoadmapUpdate();
-          }, 1000); // Small delay to ensure DB is updated
+      // Handle both old and new response formats
+      let botResponse, roadmapUpdated, updateDetails, suggestions;
+
+      if (data.success) {
+        if (data.data && data.data.response) {
+          // New format: data.data.response
+          botResponse = data.data.response;
+          roadmapUpdated = data.data.roadmapUpdated;
+          updateDetails = data.data.updateDetails;
+          suggestions = data.data.suggestions;
+        } else if (data.response) {
+          // Cur format: data.response
+          botResponse = data.response;
+          roadmapUpdated = data.roadmapUpdated;
+          updateDetails = data.updateDetails;
+          suggestions = data.suggestions;
+        } else {
+          throw new Error('No response content found in server response');
         }
       } else {
-        throw new Error(data.error || 'Failed to get response');
+        throw new Error(data.error || 'Server returned unsuccessful response');
       }
 
-    } catch (err) {
-      console.error('Chat error:', err);
-      setError(err.message);
+      if (!botResponse) {
+        throw new Error('Empty response from server');
+      }
+
+      const botMessage = {
+        role: 'assistant',
+        content: botResponse,
+        timestamp: new Date().toISOString(),
+        roadmapUpdated: roadmapUpdated,
+        updateDetails: updateDetails,
+        suggestions: suggestions
+      };
+
+      setChatHistory(prev => [...prev, botMessage]);
+
+      // Handle roadmap updates
+      if (roadmapUpdated && onRoadmapUpdate) {
+        console.log('Roadmap updated, triggering callback');
+        onRoadmapUpdate();
+      }
+
+    } catch (error) {
+      console.error('Chat error:', error);
       
-      // Add error message to chat
+      // Show specific error messages
+      let userErrorMessage = 'Sorry, I encountered an error. ';
+      
+      if (error.message.includes('Failed to fetch')) {
+        userErrorMessage += 'Please check your internet connection and try again.';
+      } else if (error.message.includes('OpenAI') || error.message.includes('AI service')) {
+        userErrorMessage += 'The AI service is temporarily unavailable. Please try again in a moment.';
+      } else if (error.message.includes('timeout')) {
+        userErrorMessage += 'The request timed out. Please try a shorter message.';
+      } else {
+        userErrorMessage += error.message || 'Please try again.';
+      }
+      
+      setError(userErrorMessage);
+      
+      // Add error message to chat history
       const errorMessage = {
         role: 'assistant',
-        content: "I'm sorry, I'm having trouble responding right now. Please try again in a moment.",
+        content: userErrorMessage,
         timestamp: new Date().toISOString(),
         isError: true
       };

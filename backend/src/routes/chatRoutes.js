@@ -18,6 +18,13 @@ const basicValidation = (req, res, next) => {
 router.post('/message', basicValidation, asyncHandler(async (req, res) => {
   const { message, context, chatHistory } = req.body;
   
+  console.log('Received chat request:', { 
+    userId: req.userId, 
+    messageLength: message?.length,
+    hasContext: !!context,
+    historyLength: chatHistory?.length
+  });
+  
   // Validate input
   if (!message?.trim()) {
     return res.apiError('Message cannot be empty', 400);
@@ -25,6 +32,11 @@ router.post('/message', basicValidation, asyncHandler(async (req, res) => {
 
   if (message.length > 2000) {
     return res.apiError('Message too long. Please keep it under 2000 characters.', 400);
+  }
+
+  // Validate context structure
+  if (!context?.user?.id) {
+    return res.apiError('User context is required', 400);
   }
 
   console.log(`💬 Processing chat message for user: ${req.userId}`);
@@ -57,6 +69,7 @@ router.post('/message', basicValidation, asyncHandler(async (req, res) => {
       } catch (modificationError) {
         console.error("❌ Roadmap modification error:", modificationError);
         console.log("🔄 Falling back to regular chat processing...");
+        // Continue to regular chat processing
       }
     }
 
@@ -64,6 +77,8 @@ router.post('/message', basicValidation, asyncHandler(async (req, res) => {
     console.log("💬 Processing as regular chat message");
     
     const responseType = detectResponseType(message);
+    console.log("Response type detected:", responseType);
+    
     const chatResponse = await chatService.processUserMessage(
       req.userId, 
       message, 
@@ -77,7 +92,16 @@ router.post('/message', basicValidation, asyncHandler(async (req, res) => {
       }
     );
 
-    const suggestions = await generateSuggestions(message, context);
+    console.log("Chat service response:", chatResponse);
+
+    if (!chatResponse || !chatResponse.response) {
+      throw new Error('Chat service returned invalid response');
+    }
+
+    const suggestions = await generateSuggestions(message, context).catch(err => {
+      console.warn('Could not generate suggestions:', err);
+      return [];
+    });
 
     res.apiSuccess({
       response: chatResponse.response,
@@ -89,12 +113,18 @@ router.post('/message', basicValidation, asyncHandler(async (req, res) => {
     }, 'Message processed successfully');
 
   } catch (error) {
+    console.error('❌ Chat processing error:', error);
+    
+    // Handle specific error types
     if (error.message?.includes('OpenAI')) {
-      throw new Error('AI service temporarily unavailable. Please try again in a moment.');
+      return res.apiError('AI service temporarily unavailable. Please try again in a moment.', 503);
     } else if (error.message?.includes('timeout')) {
-      throw new Error('Request timed out. Please try a shorter message.');
+      return res.apiError('Request timed out. Please try a shorter message.', 408);
+    } else if (error.message?.includes('context_length_exceeded')) {
+      return res.apiError('Message too long for processing. Please shorten your message.', 400);
     } else {
-      throw new Error('Failed to process your message. Please try again.');
+      // Generic error
+      return res.apiError('Failed to process your message. Please try again.', 500);
     }
   }
 }));

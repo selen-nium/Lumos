@@ -518,17 +518,19 @@ Experience level: ${userContext.experienceLevel}`;
         modulesContext
       } = options;
 
-      const systemPrompt = promptService.createContextualSystemPrompt(
+      // FIXED: Use 'let' instead of 'const' for variables that need to be modified
+      let systemPrompt = promptService.createContextualSystemPrompt(
         retrievedContext, 
         userContext, 
         responseType
       );
       
+      // Now we can safely modify systemPrompt
       if (roadmapContext) {
         systemPrompt += `\n\nUser's Current Learning Progress:
-- Roadmap: ${roadmapContext.title}
-- Progress: ${roadmapContext.completedModules}/${roadmapContext.totalModules} modules completed (${roadmapContext.completedPercentage}%)
-- Total estimated time: ${roadmapContext.totalHours} hours`;
+  - Roadmap: ${roadmapContext.title}
+  - Progress: ${roadmapContext.completedModules}/${roadmapContext.totalModules} modules completed (${roadmapContext.completedPercentage}%)
+  - Total estimated time: ${roadmapContext.totalHours} hours`;
       }
       
       if (chatHistory.length > 0) {

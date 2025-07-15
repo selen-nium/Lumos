@@ -18,23 +18,34 @@ class EmbeddingService {
      * Convert text to embedding vector
      */
     async textToEmbedding(text) {
-        try {
-            if (!text || typeof text !== 'string' || text.trim().length === 0) {
-                throw new Error('Text for embedding cannot be empty');
-            }
+        // Add validation for empty text
+        if (!text || typeof text !== 'string' || text.trim() === '') {
+            console.warn('⚠️ Empty text provided to embedding service, skipping...');
+            return null;
+        }
 
-            const response = await openai.embeddings.create({
-                model: this.embeddingModel,
-                input: text.trim(),
-                encoding_format: 'float'
-            });
+        if (!process.env.OPENAI_API_KEY) {
+            throw new Error('OPENAI_API_KEY environment variable is required');
+        }
+
+        try {
+            const openai = this.getOpenAIClient();
             
-            return response.data[0].embedding;
+            const embedding = await openai.embeddings.create({
+            model: this.defaultEmbeddingModel,
+            input: text.trim(),
+            encoding_format: "float"
+            });
+
+            console.log(`✅ Generated embedding for text (${text.length} chars)`);
+            return embedding.data[0].embedding;
+            
         } catch (error) {
-            console.error('Error generating embedding:', error);
-            throw error;
+            console.error('❌ Embedding generation failed:', error);
+            throw this.handleOpenAIError(error);
         }
     }
+
 
     /**
      * Generate embedding for module content
