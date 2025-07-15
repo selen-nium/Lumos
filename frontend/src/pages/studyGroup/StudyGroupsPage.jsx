@@ -81,7 +81,7 @@ const StudyGroupsPage = () => {
   //   return '/groupPictures/g1.jpg';
   // };
 
-  const getGroupPictureSimple = (groupId) => {
+  const getGroupPicture = (groupId) => {
     if (!groupId) return GROUP_PICTURES[0];
     
     // Simple modulo approach
