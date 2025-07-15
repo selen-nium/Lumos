@@ -169,26 +169,75 @@ const GroupChatPage = () => {
 
   const fetchMessages = async () => {
     try {
+      console.log('Fetching messages for group:', groupId);
+      
       const { data, error } = await supabase
         .from('messages')
         .select(`
           *,
-          profiles (
+          profiles:sender_id (
             id,
             username,
             role,
-            company
+            company,
+            profile_picture_url
           )
         `)
         .eq('group_id', groupId)
         .order('sent_at', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching messages:', error);
+        
+        if (error.code === '42703') {
+          console.error('Database schema error: group_id column missing in messages table');
+          alert('Database configuration error. Please contact administrator.');
+          return;
+        }
+        
+        throw error;
+      }
+
+      console.log('Fetched messages:', data);
       setMessages(data || []);
+      
     } catch (error) {
       console.error('Error fetching messages:', error);
     }
   };
+  useEffect(() => {
+    if (!groupId) return;
+
+    console.log('Setting up real-time subscription for group:', groupId);
+
+    const subscription = supabase
+      .channel(`group_messages:${groupId}`)
+      .on('postgres_changes', 
+        { 
+          event: 'INSERT', 
+          schema: 'public', 
+          table: 'messages',
+          filter: `group_id=eq.${groupId}`
+        }, 
+        (payload) => {
+          console.log('New group message received:', payload);
+          
+          // Only add if it's not from the current user
+          if (payload.new.sender_id !== user.id) {
+            setMessages(prev => [...prev, payload.new]);
+            fetchMessageWithProfile(payload.new.message_id);
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('Subscription status:', status);
+      });
+
+    return () => {
+      console.log('Unsubscribing from group messages');
+      subscription.unsubscribe();
+    };
+  }, [groupId, user.id]);
 
   const fetchMessageWithProfile = async (messageId) => {
     try {
@@ -196,7 +245,7 @@ const GroupChatPage = () => {
         .from('messages')
         .select(`
           *,
-          profiles (
+          profiles:sender_id (
             id,
             username,
             role,
@@ -207,7 +256,10 @@ const GroupChatPage = () => {
         .eq('message_id', messageId)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching message profile:', error);
+        return;
+      }
       
       if (data) {
         // Update the message in state with profile data
@@ -287,17 +339,27 @@ const GroupChatPage = () => {
 
     try {
       setSending(true);
+      
+      console.log('Sending group message:', {
+        groupId,
+        senderId: user.id,
+        messageText: newMessage.trim()
+      });
 
+      // Insert the message with proper error handling
       const { data, error } = await supabase
         .from('messages')
         .insert({
           group_id: groupId,
           sender_id: user.id,
-          message_text: newMessage.trim()
+          message_text: newMessage.trim(),
+          // Explicitly set these to null for group messages
+          connection_request_id: null,
+          receiver_id: null
         })
         .select(`
           *,
-          profiles (
+          profiles:sender_id (
             id,
             username,
             role,
@@ -307,17 +369,49 @@ const GroupChatPage = () => {
         `)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        
+        // Handle specific error cases
+        if (error.code === '23503') {
+          throw new Error('Invalid group ID or user ID');
+        } else if (error.code === '42703') {
+          throw new Error('Database schema error: group_id column missing. Please run the database migration.');
+        } else {
+          throw error;
+        }
+      }
 
+      console.log('Message sent successfully:', data);
+
+      // Add message to local state immediately for better UX
       setMessages(prev => [...prev, data]);
       setNewMessage('');
+      
+      // Scroll to bottom to show new message
+      setTimeout(() => {
+        scrollToBottom();
+      }, 100);
+
     } catch (error) {
       console.error('Error sending message:', error);
-      alert('Failed to send message. Please try again.');
+      
+      // Show user-friendly error message
+      let errorMessage = 'Failed to send message. ';
+      if (error.message.includes('schema error')) {
+        errorMessage += 'Please contact administrator - database needs updating.';
+      } else if (error.message.includes('Invalid group')) {
+        errorMessage += 'Invalid group or user.';
+      } else {
+        errorMessage += 'Please try again.';
+      }
+      
+      alert(errorMessage);
     } finally {
       setSending(false);
     }
   };
+
 
   const addWeeklyGoal = async () => {
     if (!newGoal.trim()) {
