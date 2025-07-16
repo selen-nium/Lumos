@@ -581,21 +581,26 @@ Experience level: ${userContext.experienceLevel}`;
   }
 
   /**
-   * Generate explanation of modifications made
+   * Generate explanation of modifications
    */
   async generateModificationExplanation(modificationRequest, editType, modifiedRoadmap, userContext) {
     try {
       console.log("📝 Generating modification explanation...");
       
-      // const explanationPrompt = promptService.getModificationExplanationPrompt(
-      //   modificationRequest,
-      //   editType,
-      //   modifiedRoadmap
-      // );
+      // explanation prompt
+      const explanationPrompt = `Explain the roadmap modifications that were just made.
+
+  USER REQUEST: "${modificationRequest}"
+  MODIFICATION TYPE: ${editType}
+
+  CHANGES APPLIED: ${modifiedRoadmap.changesApplied?.join(', ') || 'Various improvements'}
+  NEW STRUCTURE: ${modifiedRoadmap.modules?.length || 0} modules, ${modifiedRoadmap.estimated_duration_weeks || 'N/A'} weeks
+
+  Provide a friendly, encouraging response explaining what was changed and how it will help their learning. Keep it concise and positive. Start with something like "I've successfully updated your roadmap..." and explain the specific improvements made.`;
 
       const result = await llmService.generateWithSystemPrompt(
         promptService.getChatEnhancementSystemPrompt(),
-        // explanationPrompt,
+        explanationPrompt,
         {
           temperature: 0.4,
           max_tokens: 500
@@ -605,7 +610,7 @@ Experience level: ${userContext.experienceLevel}`;
       return result.content;
     } catch (error) {
       console.error('❌ Modification explanation error:', error);
-      return `I've made the requested changes to your roadmap. The modifications include ${modifiedRoadmap.changesApplied?.join(', ') || 'general improvements'}.`;
+      return `I've successfully updated your roadmap based on your request to ${editType.replace('_', ' ')}! The modifications include ${modifiedRoadmap.changesApplied?.join(', ') || 'general improvements'} to better match your learning goals.`;
     }
   }
 

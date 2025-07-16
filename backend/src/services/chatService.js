@@ -96,37 +96,132 @@ class ChatService {
     /**
      * Process roadmap modification request
      */
-    async processRoadmapModification(userId, message, editType, context) {
-        console.log('🔧 Processing roadmap modification:', { userId, editType });
-        
+    async processRoadmapModification(userId, message, editType, options = {}) {
         try {
+            console.log("🔧 Processing roadmap modification:", {
+                userId,
+                editType,
+                messageLength: message.length
+            });
+
             // Validate inputs
             if (!userId || !message || !editType) {
                 throw new Error('Missing required parameters for roadmap modification');
             }
 
-            // Try to delegate to RAG orchestrator for modifications
-            const modificationResponse = await ragOrchestrator.processRoadmapModification(
-                userId,
-                message,
-                editType,
-                context
-            );
-
-            if (modificationResponse && modificationResponse.response) {
+            // Get current roadmap data
+            const currentRoadmap = await userDataService.findActiveByUserId(userId);
+            if (!currentRoadmap) {
                 return {
-                    response: modificationResponse.response,
-                    roadmapUpdated: modificationResponse.roadmapUpdated || false,
-                    updateDetails: modificationResponse.updateDetails || null,
+                    response: "I couldn't find your current learning roadmap. Please make sure you have completed the onboarding process first.",
+                    roadmapUpdated: false,
+                    updateDetails: null,
                     timestamp: new Date().toISOString()
                 };
             }
 
-            // Fallback response if modification processing fails
+            // Create backup before modification
+            const backupId = await roadmapDataService.backupCurrentRoadmap(userId);
+            if (backupId) {
+                console.log("💾 Backup created with ID:", backupId);
+            }
+
+            // Create user context for modification
+            console.log("🔍 Creating user context for roadmap modification...");
+            const userContext = await userProfileService.createUserContext(userId);
+            
+            // Debug log to verify userContext
+            console.log("🔍 UserContext created:", {
+                hasUserContext: !!userContext,
+                experienceLevel: userContext?.experienceLevel,
+                goalsText: userContext?.goalsText,
+                skillsText: userContext?.skillsText,
+                timeAvailable: userContext?.timeAvailable
+            });
+
+            // Prepare roadmap context for AI
+            const roadmapContext = {
+                title: currentRoadmap.path_name,
+                totalModules: currentRoadmap.modules?.length || 0,
+                completedModules: currentRoadmap.modules?.filter(m => m.is_completed).length || 0,
+                completedPercentage: Math.round(((currentRoadmap.modules?.filter(m => m.is_completed).length || 0) / (currentRoadmap.modules?.length || 1)) * 100),
+                modules: currentRoadmap.modules || []
+            };
+
+            // Prepare modules context for AI
+            const modulesContext = currentRoadmap.modules?.map(module => ({
+                id: module.module_id,
+                name: module.module_name,
+                isCompleted: module.is_completed,
+                sequence_order: module.sequence_order,
+                difficulty: module.difficulty,
+                estimated_hours: module.estimated_hours
+            })) || [];
+
+            // Create proper context object
+            const contextForRAG = {
+                userContext,           
+                roadmapContext,        
+                modulesContext,        
+                ...options            
+            };
+
+            console.log("🔧 Calling RAG orchestrator with proper context:", {
+                hasUserContext: !!contextForRAG.userContext,
+                hasRoadmapContext: !!contextForRAG.roadmapContext,
+                hasModulesContext: !!contextForRAG.modulesContext,
+                modulesCount: contextForRAG.modulesContext?.length || 0
+            });
+
+            // Delegate to RAG orchestrator for modification
+            const modificationResponse = await ragOrchestrator.processRoadmapModification(
+                userId,
+                message,
+                editType,
+                contextForRAG
+            );
+
+            // If roadmap was modified, save it to database
+            if (modificationResponse.roadmapUpdated && modificationResponse.modifiedRoadmap) {
+                try {
+                    console.log("💾 Saving modified roadmap to database...");
+                    
+                    const saveResult = await roadmapDataService.updateUserRoadmap(
+                        userId, 
+                        modificationResponse.modifiedRoadmap
+                    );
+                    
+                    console.log("✅ Modified roadmap saved successfully:", saveResult);
+                    
+                    // Add save confirmation to response
+                    modificationResponse.response += "\n\n✅ Your roadmap has been updated and saved!";
+                    
+                } catch (saveError) {
+                    console.error("❌ Failed to save modified roadmap:", saveError);
+                    
+                    // Try to restore from backup if save failed
+                    if (backupId) {
+                        try {
+                            await roadmapDataService.restoreFromBackup(userId, backupId);
+                            console.log("🔄 Restored from backup due to save failure");
+                        } catch (restoreError) {
+                            console.error("❌ Failed to restore from backup:", restoreError);
+                        }
+                    }
+                    
+                    return {
+                        response: "I generated the modifications for your roadmap, but there was an issue saving the changes. Your original roadmap has been preserved. Please try again.",
+                        roadmapUpdated: false,
+                        updateDetails: null,
+                        timestamp: new Date().toISOString()
+                    };
+                }
+            }
+
             return {
-                response: `I understand you want to ${editType.replace('_', ' ')} your roadmap. While I'm working on processing your request, you can manually adjust your learning path in your roadmap section. I'll keep improving to better help with roadmap modifications!`,
-                roadmapUpdated: false,
-                updateDetails: null,
+                response: modificationResponse.response,
+                roadmapUpdated: modificationResponse.roadmapUpdated,
+                updateDetails: modificationResponse.updateDetails,
                 timestamp: new Date().toISOString()
             };
 
