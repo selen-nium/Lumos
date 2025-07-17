@@ -5,7 +5,7 @@ class LLMService {
     this.openai = null; // Init as null
     
     // Default models
-    this.defaultChatModel = 'gpt-4o-mini';
+    this.defaultChatModel = 'gpt-4.1';
     this.defaultEmbeddingModel = 'text-embedding-3-small';
     
     // Default params
@@ -365,7 +365,8 @@ class LLMService {
       'gpt-4o-mini': 128000,
       'gpt-4o': 128000,
       'gpt-4': 8192,
-      'gpt-3.5-turbo': 4096
+      'gpt-3.5-turbo': 4096,
+      'gpt-4.1': 128000
     };
     
     const modelLimit = modelLimits[model] || 4096;
